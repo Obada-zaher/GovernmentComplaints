@@ -3,11 +3,9 @@
 namespace App\Http\Responses;
 
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\JsonResource;
-
 trait ApiResponse
 {
-    protected function successResponse(string $message, array|JsonResource $data = [], int $status = 200, array $meta = []): JsonResponse
+    protected function successResponse(string $message, mixed $data = [], int $status = 200, array $meta = []): JsonResponse
     {
         return response()->json([
             'success' => true,

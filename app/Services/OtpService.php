@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\OtpCode;
 use App\Models\User;
+use App\Notifications\Auth\OtpCodeNotification;
 use Illuminate\Support\Facades\Hash;
 
 class OtpService
@@ -17,9 +18,8 @@ class OtpService
     }
 
     /**
-     * @return array{otp: OtpCode, plain: string}
      */
-    public function createForUser(User $user, string $purpose): array
+    public function createForUser(User $user, string $purpose): OtpCode
     {
         OtpCode::query()
             ->where('user_id', $user->id)
@@ -39,10 +39,9 @@ class OtpService
             'attempts' => 0,
         ]);
 
-        return [
-            'otp' => $otp,
-            'plain' => $plainOtp,
-        ];
+        $user->notify(new OtpCodeNotification($plainOtp, $purpose, self::EXPIRES_IN_MINUTES));
+
+        return $otp;
     }
 
     /**
@@ -67,23 +66,27 @@ class OtpService
         if ($otp->attempts >= self::MAX_ATTEMPTS) {
             return [
                 'success' => false,
-                'message' => 'Maximum OTP attempts exceeded.',
+                'message' => 'The verification code is invalid or has expired.',
             ];
         }
 
         if ($otp->expires_at->isPast()) {
             return [
                 'success' => false,
-                'message' => 'OTP has expired.',
+                'message' => 'The verification code is invalid or has expired.',
             ];
         }
 
         if (! Hash::check($plainOtp, $otp->code_hash)) {
             $otp->increment('attempts');
 
+            if ($otp->fresh()->attempts >= self::MAX_ATTEMPTS) {
+                $otp->forceFill(['used_at' => now()])->save();
+            }
+
             return [
                 'success' => false,
-                'message' => 'Invalid OTP.',
+                'message' => 'The verification code is invalid or has expired.',
             ];
         }
 

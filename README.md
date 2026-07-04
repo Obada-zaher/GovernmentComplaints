@@ -10,10 +10,14 @@ All API endpoints are prefixed with `/api/v1`.
 | --- | --- | --- | --- |
 | POST | `/api/v1/auth/register` | Public | Register a citizen and send OTP |
 | POST | `/api/v1/auth/login` | Public | Login with email or phone and send OTP |
-| POST | `/api/v1/auth/verify-otp` | Public | Verify OTP and issue Sanctum token for register/login |
+| POST | `/api/v1/auth/verify-otp` | Public | Verify OTP and issue Sanctum token |
 | POST | `/api/v1/auth/resend-otp` | Public, throttled | Resend OTP |
+| POST | `/api/v1/auth/forgot-password` | Public, throttled | Send password reset email |
+| POST | `/api/v1/auth/reset-password` | Public, throttled | Reset password with token |
 | GET | `/api/v1/auth/me` | Bearer token | Return current user profile |
+| POST | `/api/v1/auth/change-password` | Bearer token, throttled | Change password using current password |
 | POST | `/api/v1/auth/logout` | Bearer token | Revoke current access token |
+| POST | `/api/v1/auth/logout-all` | Bearer token | Revoke all access tokens |
 
 ## Role Ping Endpoints
 
@@ -58,12 +62,56 @@ All seeded users use the password `password`.
 | employee | `employee@gcms.test` | `0990000002` |
 | citizen | `citizen@gcms.test` | `0990000003` |
 
-## Example Login Flow
+## Mailtrap Setup
 
-1. Send `POST /api/v1/auth/login`.
-2. In `APP_ENV=local`, copy the OTP from the response. In other environments, the OTP is not returned.
-3. Send `POST /api/v1/auth/verify-otp` with `user_id`, `otp`, and `purpose`.
-4. Use the returned token as `Authorization: Bearer <token>` for protected endpoints.
+Mailtrap is used for development email delivery. Do not put real Mailtrap credentials in GitHub.
+
+1. Create a Mailtrap account.
+2. Go to Email Sandbox and open your inbox.
+3. Open SMTP Settings / Integrations.
+4. Choose Laravel.
+5. Copy the exact SMTP credentials from your Mailtrap dashboard into your local `.env`.
+6. If Mailtrap shows a different port for your inbox, use the port from Mailtrap.
+7. Clear cached configuration:
+
+```bash
+php artisan config:clear
+```
+
+Local `.env` example:
+
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=sandbox.smtp.mailtrap.io
+MAIL_PORT=2525
+MAIL_USERNAME=your_mailtrap_username
+MAIL_PASSWORD=your_mailtrap_password
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=no-reply@gcms.test
+MAIL_FROM_NAME="Government Complaints Management System"
+```
+
+OTP and password reset messages appear inside the Mailtrap inbox. OTP codes are never returned in API responses under any environment.
+
+## Secure Authentication Flow
+
+Register:
+
+1. Send `POST /api/v1/auth/register`.
+2. The API creates a citizen account with `email_verified_at = null`.
+3. A 6-digit OTP is hashed in the database and emailed through Mailtrap.
+4. Copy the OTP from Mailtrap.
+5. Send `POST /api/v1/auth/verify-otp` with `purpose=register`.
+6. The API marks the email verified and returns a Sanctum bearer token.
+
+Login:
+
+1. Send `POST /api/v1/auth/login` with email or phone and password.
+2. Invalid credentials return a generic error.
+3. If the email is not verified, the API sends a `verify_email` OTP and does not return a token.
+4. If credentials are valid and email is verified, the API sends a `login` OTP through Mailtrap.
+5. Send `POST /api/v1/auth/verify-otp` with `purpose=login`.
+6. The API returns a Sanctum bearer token and user resource.
 
 Example login request:
 
@@ -80,16 +128,47 @@ Example verify request:
 {
   "user_id": 3,
   "otp": "123456",
-  "purpose": "login"
+  "purpose": "login",
+  "device_name": "Postman"
 }
 ```
 
-## Postman Collection
+Password recovery:
 
-Import these files into Postman:
+1. `POST /api/v1/auth/forgot-password` always returns a generic response.
+2. If the email exists, Mailtrap receives a password reset token email.
+3. `POST /api/v1/auth/reset-password` validates the token, changes the password, and revokes existing Sanctum tokens.
+4. Reset password does not auto-login the user.
 
-1. Collection: `docs/postman/government-complaints-api.postman_collection.json`
-2. Environment: `docs/postman/local.postman_environment.json`
+Password management:
+
+1. `POST /api/v1/auth/change-password` requires the current password and a new confirmed password.
+2. The new password must be different from the current password.
+3. Changing password revokes other tokens and keeps the current token when possible.
+4. `POST /api/v1/auth/logout` revokes only the current token.
+5. `POST /api/v1/auth/logout-all` revokes all tokens for the user.
+
+Sensitive auth actions are rate-limited and recorded in `auth_events` without storing passwords, OTPs, tokens, or secrets.
+
+## Postman Organization
+
+Postman files are split by module under `docs/postman`.
+
+Environment files:
+
+- `docs/postman/environments/gcms-local-mailtrap.postman_environment.json`
+- `docs/postman/environments/gcms-production-template.postman_environment.json`
+
+Collections:
+
+- `docs/postman/collections/00-health.postman_collection.json`
+- `docs/postman/collections/01-auth.postman_collection.json`
+- `docs/postman/collections/02-lookups.postman_collection.json`
+- `docs/postman/collections/03-admin-management.postman_collection.json`
+- `docs/postman/collections/04-citizen-complaints.postman_collection.json`
+- `docs/postman/collections/05-employee-complaints.postman_collection.json`
+- `docs/postman/collections/06-notifications.postman_collection.json`
+- `docs/postman/collections/07-reports.postman_collection.json`
 
 Run the API locally:
 
@@ -98,17 +177,18 @@ php artisan migrate:fresh --seed
 php artisan serve
 ```
 
-Select `GCMS Local Environment` in Postman before sending requests.
+Select `GCMS Local Mailtrap Environment` in Postman before sending requests.
 
 Recommended auth flow:
 
-1. Run `Auth - Citizen Register Flow / Register Citizen`.
-2. If `APP_ENV=local`, the response includes the OTP and the Postman test script saves it automatically. In other environments, copy the OTP from your delivery channel or database test fixture into `citizen_otp`.
-3. Run `Auth - Citizen Register Flow / Verify Citizen Register OTP`.
-4. Use the saved `citizen_token` for protected citizen requests.
-5. Run the admin and employee login folders after `php artisan migrate:fresh --seed` to use the seeded accounts.
+1. Import the local Mailtrap environment first.
+2. Import `01-auth`.
+3. Run Register or Login.
+4. Open Mailtrap, copy the OTP, and paste it into the matching environment variable.
+5. Run Verify OTP to save a token.
+6. Import and use the module collection you need.
 
-OTP values are returned by the API only when `APP_ENV=local`. Shared tokens, OTPs, and exported environments containing real secrets must not be committed.
+See `docs/postman/README.md` for the team-by-team guide. Shared tokens, OTPs, reset tokens, and exported environments containing real secrets must not be committed.
 
 ## Lookups and Admin Management APIs
 
@@ -175,12 +255,51 @@ If `category_id` is provided without `department_id`, the department is inferred
 
 `due_at` is calculated from the first active SLA rule that matches, in this order: department + category + priority, then department + priority, then priority only. If no active SLA rule matches, `due_at` remains `null`.
 
-In Postman, import the collection and environment from `docs/postman`, run the citizen auth flow to set `citizen_token`, then use the `Citizen - Complaints` folder. The JSON create request saves `complaint_id` and `complaint_number` for the show and attachment requests.
+In Postman, import the local Mailtrap environment, run `01-auth` to set `citizen_token`, then use `04-citizen-complaints`. The JSON create request saves `complaint_id` and `complaint_number` for the show and attachment requests.
+
+## Complaint Assignment and Lifecycle
+
+The core complaint workflow is:
+
+1. A citizen creates a complaint through `/api/v1/citizen/complaints`.
+2. Admin users list and inspect complaints through `/api/v1/admin/complaints`.
+3. Admin users assign complaints to employees with `PATCH /api/v1/admin/complaints/{complaint}/assign`.
+4. Employees list accessible complaints through `/api/v1/employee/complaints`.
+5. Employees process assigned or department-accessible complaints by updating status.
+
+Status transitions are restricted:
+
+- `submitted` -> `under_review`, `rejected`
+- `under_review` -> `assigned`, `rejected`, `escalated`
+- `assigned` -> `in_progress`, `escalated`
+- `in_progress` -> `waiting_citizen`, `resolved`, `escalated`
+- `waiting_citizen` -> `in_progress`, `resolved`
+- `resolved` -> `closed`
+- `escalated` -> `assigned`, `in_progress`, `resolved`
+
+Admin assignment can move a `submitted` or `under_review` complaint to `assigned`. Employees cannot close or reject complaints; those actions remain admin-only when the lifecycle permits them.
+
+Every status update creates a `complaint_status_histories` timeline record with `from_status`, `to_status`, `changed_by`, `note`, and `duration_minutes`. `duration_minutes` is calculated from the last timeline event, or from complaint creation when no prior timeline event exists.
+
+The API sets lifecycle timestamps automatically:
+
+- `first_response_at`: first admin or employee workflow action.
+- `resolved_at`: first transition to `resolved`.
+- `closed_at`: first transition to `closed`.
+
+Admin users can also correct complaint department/category and priority. These changes create timeline records and recalculate `due_at` from active SLA rules when possible.
+
+Use these Postman collections for the workflow:
+
+- `docs/postman/collections/03-admin-management.postman_collection.json`
+- `docs/postman/collections/05-employee-complaints.postman_collection.json`
 
 ## Development Commands
 
 ```bash
 php artisan migrate:fresh --seed
+php artisan config:clear
+php artisan cache:clear
 php artisan storage:link
 php artisan test
 ```

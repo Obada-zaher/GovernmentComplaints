@@ -3,18 +3,23 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Auth\ChangePasswordRequest;
+use App\Http\Requests\Api\V1\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Api\V1\Auth\LoginRequest;
 use App\Http\Requests\Api\V1\Auth\RegisterRequest;
 use App\Http\Requests\Api\V1\Auth\ResendOtpRequest;
+use App\Http\Requests\Api\V1\Auth\ResetPasswordRequest;
 use App\Http\Requests\Api\V1\Auth\VerifyOtpRequest;
 use App\Http\Resources\Api\V1\UserResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\User;
+use App\Services\Auth\AuthEventService;
 use App\Services\AuthService;
 use App\Services\OtpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 
 class AuthController extends Controller
 {
@@ -23,25 +28,22 @@ class AuthController extends Controller
     public function __construct(
         private readonly AuthService $authService,
         private readonly OtpService $otpService,
+        private readonly AuthEventService $authEventService,
     ) {
     }
 
     public function register(RegisterRequest $request): JsonResponse
     {
-        $result = $this->authService->register($request->validated());
-
-        $data = [
-            'user_id' => $result['user']->id,
-            'requires_otp' => true,
-        ];
-
-        if (app()->environment('local')) {
-            $data['otp'] = $result['otp'];
-        }
+        $user = $this->authService->register($request->validated());
+        $this->authEventService->record('registered', $user, $request);
+        $this->authEventService->record('otp_sent', $user, $request, ['purpose' => 'register']);
 
         return $this->successResponse(
-            'Registration successful. OTP verification required.',
-            $data,
+            'Registration successful. A verification code has been sent to your email.',
+            [
+                'user_id' => $user->id,
+                'requires_otp' => true,
+            ],
             201,
         );
     }
@@ -52,6 +54,8 @@ class AuthController extends Controller
         $user = $this->authService->findLoginUser($data['login']);
 
         if (! $user || ! Hash::check($data['password'], $user->password)) {
+            $this->authEventService->record('login_failed', $user, $request, ['login' => $data['login']]);
+
             return $this->errorResponse('Invalid login credentials.', [], 401);
         }
 
@@ -59,20 +63,20 @@ class AuthController extends Controller
             return $this->errorResponse('User account is inactive.', [], 403);
         }
 
-        $otp = $this->otpService->createForUser($user, 'login');
+        $this->authEventService->record('login_credentials_valid', $user, $request);
 
-        $responseData = [
-            'user_id' => $user->id,
-            'requires_otp' => true,
-        ];
-
-        if (app()->environment('local')) {
-            $responseData['otp'] = $otp['plain'];
-        }
+        $purpose = $user->email_verified_at ? 'login' : 'verify_email';
+        $this->otpService->createForUser($user, $purpose);
+        $this->authEventService->record('otp_sent', $user, $request, ['purpose' => $purpose]);
 
         return $this->successResponse(
-            'Login successful. OTP verification required.',
-            $responseData,
+            $purpose === 'login'
+                ? 'Login verification code has been sent to your email.'
+                : 'Email verification code has been sent to your email.',
+            [
+                'user_id' => $user->id,
+                'requires_otp' => true,
+            ],
         );
     }
 
@@ -88,26 +92,24 @@ class AuthController extends Controller
         $verification = $this->otpService->verify($user, $data['otp'], $data['purpose']);
 
         if (! $verification['success']) {
+            $this->authEventService->record('otp_failed', $user, $request, ['purpose' => $data['purpose']]);
+
             return $this->errorResponse($verification['message'], [
                 'otp' => [$verification['message']],
             ], 422);
         }
 
-        if (in_array($data['purpose'], ['register', 'verify_phone'], true)) {
-            $user->forceFill(['phone_verified_at' => now()])->save();
+        if (in_array($data['purpose'], ['register', 'verify_email'], true)) {
+            $user->forceFill(['email_verified_at' => now()])->save();
         }
 
-        $responseData = [
+        $this->authEventService->record('otp_verified', $user, $request, ['purpose' => $data['purpose']]);
+
+        return $this->successResponse('Verification successful.', [
+            'token' => $this->authService->issueToken($user, $data['device_name'] ?? null),
+            'token_type' => 'Bearer',
             'user' => new UserResource($user->fresh('department')),
-        ];
-
-        if (in_array($data['purpose'], ['register', 'login'], true)) {
-            $responseData['token'] = $this->authService->issueToken($user);
-            $responseData['token_type'] = 'Bearer';
-            $responseData['user'] = new UserResource($user->fresh('department'));
-        }
-
-        return $this->successResponse('OTP verified successfully.', $responseData);
+        ]);
     }
 
     public function resendOtp(ResendOtpRequest $request): JsonResponse
@@ -119,18 +121,66 @@ class AuthController extends Controller
             return $this->errorResponse('User account is inactive.', [], 403);
         }
 
-        $otp = $this->otpService->createForUser($user, $data['purpose']);
+        $this->otpService->createForUser($user, $data['purpose']);
+        $this->authEventService->record('otp_resent', $user, $request, ['purpose' => $data['purpose']]);
 
-        $responseData = [
-            'user_id' => $user->id,
+        return $this->successResponse('A new verification code has been sent to your email.', [
             'requires_otp' => true,
-        ];
+        ]);
+    }
 
-        if (app()->environment('local')) {
-            $responseData['otp'] = $otp['plain'];
+    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $user = User::query()->where('email', $data['email'])->first();
+
+        if ($user && $user->is_active) {
+            Password::sendResetLink(['email' => $data['email']]);
         }
 
-        return $this->successResponse('OTP resent successfully.', $responseData);
+        $this->authEventService->record('password_reset_requested', $user, $request);
+
+        return $this->successResponse('If this email exists, a password reset link has been sent.');
+    }
+
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $status = $this->authService->resetPassword($data['email'], $data['token'], $data['password']);
+
+        if ($status !== Password::PASSWORD_RESET) {
+            return $this->errorResponse('Invalid or expired password reset token.', [
+                'token' => ['Invalid or expired password reset token.'],
+            ], 422);
+        }
+
+        $user = User::query()->where('email', $data['email'])->first();
+        $this->authEventService->record('password_reset_completed', $user, $request);
+
+        return $this->successResponse('Password reset successfully.');
+    }
+
+    public function changePassword(ChangePasswordRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $user = $request->user();
+
+        if (! Hash::check($data['current_password'], $user->password)) {
+            return $this->errorResponse('Current password is incorrect.', [
+                'current_password' => ['Current password is incorrect.'],
+            ], 422);
+        }
+
+        $user->forceFill(['password' => Hash::make($data['password'])])->save();
+
+        $currentToken = $user->currentAccessToken();
+        if ($currentToken) {
+            $user->tokens()->where('id', '!=', $currentToken->id)->delete();
+        }
+
+        $this->authEventService->record('password_changed', $user, $request);
+
+        return $this->successResponse('Password changed successfully.');
     }
 
     public function me(Request $request): JsonResponse
@@ -142,8 +192,17 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
+        $this->authEventService->record('logout', $request->user(), $request);
         $request->user()->currentAccessToken()?->delete();
 
         return $this->successResponse('Logged out successfully.');
+    }
+
+    public function logoutAll(Request $request): JsonResponse
+    {
+        $this->authEventService->record('logout_all', $request->user(), $request);
+        $request->user()->tokens()->delete();
+
+        return $this->successResponse('Logged out from all devices successfully.');
     }
 }

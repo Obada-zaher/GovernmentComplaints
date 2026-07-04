@@ -3,9 +3,9 @@
 namespace App\Http\Requests\Api\V1\Auth;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
-class ResendOtpRequest extends FormRequest
+class ChangePasswordRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -18,8 +18,8 @@ class ResendOtpRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user_id' => ['required', 'integer', 'exists:users,id'],
-            'purpose' => ['required', Rule::in(['register', 'verify_email', 'login'])],
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', Password::min(8), 'confirmed', 'different:current_password'],
         ];
     }
 }

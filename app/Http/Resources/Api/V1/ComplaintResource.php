@@ -30,6 +30,12 @@ class ComplaintResource extends JsonResource
             'resolved_at' => $this->resolved_at?->toISOString(),
             'closed_at' => $this->closed_at?->toISOString(),
             'is_sla_breached' => (bool) $this->is_sla_breached,
+            'citizen' => $this->whenLoaded('citizen', fn () => $this->citizen ? [
+                'id' => $this->citizen->id,
+                'name' => $this->citizen->name,
+                'email' => $this->citizen->email,
+                'phone' => $this->citizen->phone,
+            ] : null),
             'department' => $this->whenLoaded('department', fn () => $this->department ? [
                 'id' => $this->department->id,
                 'name' => $this->department->name,
@@ -56,6 +62,7 @@ class ComplaintResource extends JsonResource
             'attachments' => $this->whenLoaded('attachments', fn () => ComplaintAttachmentResource::collection($this->attachments)),
             'timeline' => $this->whenLoaded('statusHistories', fn () => ComplaintStatusHistoryResource::collection($this->statusHistories)),
             'status_histories' => $this->whenLoaded('statusHistories', fn () => ComplaintStatusHistoryResource::collection($this->statusHistories)),
+            'assignments' => $this->whenLoaded('assignments', fn () => ComplaintAssignmentResource::collection($this->assignments)),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

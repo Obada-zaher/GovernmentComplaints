@@ -1,0 +1,195 @@
+{
+    "info":  {
+                 "_postman_id":  "678046da-73d2-459a-b29e-5c25c791fb10",
+                 "name":  "02 - Lookups",
+                 "description":  "Public/common lookup APIs for frontend dropdowns.",
+                 "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+             },
+    "item":  [
+                 {
+                     "name":  "List Departments",
+                     "request":  {
+                                     "method":  "GET",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Accept",
+                                                        "value":  "application/json"
+                                                    }
+                                                ],
+                                     "url":  {
+                                                 "raw":  "{{base_url}}/lookups/departments",
+                                                 "host":  [
+                                                              "{{base_url}}"
+                                                          ],
+                                                 "path":  [
+                                                              "lookups",
+                                                              "departments"
+                                                          ]
+                                             },
+                                     "description":  "Purpose: fetch active departments. Required role: public. Expected response: data.departments."
+                                 },
+                     "response":  [
+
+                                  ],
+                     "event":  [
+                                   {
+                                       "listen":  "test",
+                                       "script":  {
+                                                      "type":  "text/javascript",
+                                                      "exec":  [
+                                                                   "pm.test(\u0027success key exists\u0027, function () { const json = pm.response.json(); pm.expect(json).to.have.property(\u0027success\u0027); });"
+                                                               ]
+                                                  }
+                                   }
+                               ]
+                 },
+                 {
+                     "name":  "List Categories",
+                     "request":  {
+                                     "method":  "GET",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Accept",
+                                                        "value":  "application/json"
+                                                    }
+                                                ],
+                                     "url":  {
+                                                 "raw":  "{{base_url}}/lookups/categories",
+                                                 "host":  [
+                                                              "{{base_url}}"
+                                                          ],
+                                                 "path":  [
+                                                              "lookups",
+                                                              "categories"
+                                                          ]
+                                             },
+                                     "description":  "Purpose: fetch active complaint categories. Required role: public. Expected response: data.categories."
+                                 },
+                     "response":  [
+
+                                  ],
+                     "event":  [
+                                   {
+                                       "listen":  "test",
+                                       "script":  {
+                                                      "type":  "text/javascript",
+                                                      "exec":  [
+                                                                   "pm.test(\u0027success key exists\u0027, function () { const json = pm.response.json(); pm.expect(json).to.have.property(\u0027success\u0027); });"
+                                                               ]
+                                                  }
+                                   }
+                               ]
+                 },
+                 {
+                     "name":  "List Categories By Department",
+                     "request":  {
+                                     "method":  "GET",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Accept",
+                                                        "value":  "application/json"
+                                                    }
+                                                ],
+                                     "url":  {
+                                                 "raw":  "{{base_url}}/lookups/categories?department_id={{department_id}}",
+                                                 "host":  [
+                                                              "{{base_url}}"
+                                                          ],
+                                                 "path":  [
+                                                              "lookups",
+                                                              "categories?department_id={{department_id}}"
+                                                          ]
+                                             },
+                                     "description":  "Purpose: fetch active categories by department_id. Required role: public. Manually set department_id."
+                                 },
+                     "response":  [
+
+                                  ],
+                     "event":  [
+                                   {
+                                       "listen":  "test",
+                                       "script":  {
+                                                      "type":  "text/javascript",
+                                                      "exec":  [
+                                                                   "pm.test(\u0027success key exists\u0027, function () { const json = pm.response.json(); pm.expect(json).to.have.property(\u0027success\u0027); });"
+                                                               ]
+                                                  }
+                                   }
+                               ]
+                 },
+                 {
+                     "name":  "List Priorities",
+                     "request":  {
+                                     "method":  "GET",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Accept",
+                                                        "value":  "application/json"
+                                                    }
+                                                ],
+                                     "url":  {
+                                                 "raw":  "{{base_url}}/lookups/priorities",
+                                                 "host":  [
+                                                              "{{base_url}}"
+                                                          ],
+                                                 "path":  [
+                                                              "lookups",
+                                                              "priorities"
+                                                          ]
+                                             },
+                                     "description":  "Purpose: fetch priorities. Required role: public. Expected response: data.priorities."
+                                 },
+                     "response":  [
+
+                                  ],
+                     "event":  [
+                                   {
+                                       "listen":  "test",
+                                       "script":  {
+                                                      "type":  "text/javascript",
+                                                      "exec":  [
+                                                                   "pm.test(\u0027success key exists\u0027, function () { const json = pm.response.json(); pm.expect(json).to.have.property(\u0027success\u0027); });"
+                                                               ]
+                                                  }
+                                   }
+                               ]
+                 },
+                 {
+                     "name":  "List Complaint Statuses",
+                     "request":  {
+                                     "method":  "GET",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Accept",
+                                                        "value":  "application/json"
+                                                    }
+                                                ],
+                                     "url":  {
+                                                 "raw":  "{{base_url}}/lookups/complaint-statuses",
+                                                 "host":  [
+                                                              "{{base_url}}"
+                                                          ],
+                                                 "path":  [
+                                                              "lookups",
+                                                              "complaint-statuses"
+                                                          ]
+                                             },
+                                     "description":  "Purpose: fetch static complaint statuses. Required role: public. Expected response: data.statuses."
+                                 },
+                     "response":  [
+
+                                  ],
+                     "event":  [
+                                   {
+                                       "listen":  "test",
+                                       "script":  {
+                                                      "type":  "text/javascript",
+                                                      "exec":  [
+                                                                   "pm.test(\u0027success key exists\u0027, function () { const json = pm.response.json(); pm.expect(json).to.have.property(\u0027success\u0027); });"
+                                                               ]
+                                                  }
+                                   }
+                               ]
+                 }
+             ]
+}

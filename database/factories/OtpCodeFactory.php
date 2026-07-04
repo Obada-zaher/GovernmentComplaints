@@ -19,7 +19,7 @@ class OtpCodeFactory extends Factory
             'phone' => fake()->optional()->numerify('09########'),
             'email' => fake()->optional()->safeEmail(),
             'code_hash' => Hash::make('123456'),
-            'purpose' => fake()->randomElement(['register', 'login', 'reset_password', 'verify_phone']),
+            'purpose' => fake()->randomElement(['register', 'verify_email', 'login']),
             'expires_at' => now()->addMinutes(10),
             'used_at' => null,
             'attempts' => 0,

@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('phone')->nullable();
             $table->string('email')->nullable();
             $table->string('code_hash');
-            $table->enum('purpose', ['register', 'login', 'reset_password', 'verify_phone'])->default('register');
+            $table->enum('purpose', ['register', 'verify_email', 'login'])->default('register');
             $table->timestamp('expires_at');
             $table->timestamp('used_at')->nullable();
             $table->unsignedTinyInteger('attempts')->default(0);

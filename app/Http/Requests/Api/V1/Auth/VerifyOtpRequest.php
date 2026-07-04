@@ -20,7 +20,8 @@ class VerifyOtpRequest extends FormRequest
         return [
             'user_id' => ['required', 'integer', 'exists:users,id'],
             'otp' => ['required', 'string', 'digits:6'],
-            'purpose' => ['required', Rule::in(['register', 'login', 'verify_phone'])],
+            'purpose' => ['required', Rule::in(['register', 'verify_email', 'login'])],
+            'device_name' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

@@ -1,0 +1,11 @@
+{
+    "info":  {
+                 "_postman_id":  "d8494854-d3f8-451d-b1e1-a278c94759f8",
+                 "name":  "06 - Notifications",
+                 "description":  "Placeholder collection. Notification API routes are not implemented yet, so this collection intentionally contains no fake requests.",
+                 "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+             },
+    "item":  [
+
+             ]
+}

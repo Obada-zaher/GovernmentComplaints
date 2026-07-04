@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use App\Notifications\Auth\ResetPasswordNotification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -30,6 +31,7 @@ class User extends Authenticatable
         'role',
         'department_id',
         'is_active',
+        'email_verified_at',
         'phone_verified_at',
         'last_login_at',
     ];
@@ -98,5 +100,15 @@ class User extends Authenticatable
     public function offlineSubmissions(): HasMany
     {
         return $this->hasMany(OfflineSubmission::class, 'citizen_id');
+    }
+
+    public function authEvents(): HasMany
+    {
+        return $this->hasMany(AuthEvent::class);
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 }

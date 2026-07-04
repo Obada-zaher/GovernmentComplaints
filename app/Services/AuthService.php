@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 
 class AuthService
 {
@@ -13,9 +15,8 @@ class AuthService
 
     /**
      * @param array{name: string, email: string, phone: string, national_id?: string|null, password: string} $data
-     * @return array{user: User, otp: string}
      */
-    public function register(array $data): array
+    public function register(array $data): User
     {
         $user = User::query()->create([
             'name' => $data['name'],
@@ -25,15 +26,13 @@ class AuthService
             'password' => Hash::make($data['password']),
             'role' => 'citizen',
             'is_active' => true,
+            'email_verified_at' => null,
             'phone_verified_at' => null,
         ]);
 
-        $otp = $this->otpService->createForUser($user, 'register');
+        $this->otpService->createForUser($user, 'register');
 
-        return [
-            'user' => $user,
-            'otp' => $otp['plain'],
-        ];
+        return $user;
     }
 
     public function findLoginUser(string $login): ?User
@@ -44,10 +43,27 @@ class AuthService
             ->first();
     }
 
-    public function issueToken(User $user): string
+    public function issueToken(User $user, ?string $deviceName = null): string
     {
         $user->forceFill(['last_login_at' => now()])->save();
 
-        return $user->createToken('api-token')->plainTextToken;
+        return $user->createToken($deviceName ?: 'api-token')->plainTextToken;
+    }
+
+    public function resetPassword(string $email, string $token, string $password): string
+    {
+        return Password::reset([
+            'email' => $email,
+            'token' => $token,
+            'password' => $password,
+            'password_confirmation' => $password,
+        ], function (User $user) use ($password): void {
+            $user->forceFill([
+                'password' => Hash::make($password),
+                'remember_token' => Str::random(60),
+            ])->save();
+
+            $user->tokens()->delete();
+        });
     }
 }

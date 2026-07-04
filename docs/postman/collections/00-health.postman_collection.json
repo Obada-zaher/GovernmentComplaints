@@ -1,0 +1,32 @@
+{
+    "info":  {
+                 "_postman_id":  "e8833155-64e7-4740-90d3-b1d57eecca51",
+                 "name":  "00 - Health",
+                 "description":  "Basic health check. The Laravel health route exists at /up outside the API prefix.",
+                 "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+             },
+    "item":  [
+                 {
+                     "name":  "Application Health",
+                     "request":  {
+                                     "method":  "GET",
+                                     "header":  [
+
+                                                ],
+                                     "url":  {
+                                                 "raw":  "{{app_url}}/up",
+                                                 "host":  [
+                                                              "{{app_url}}"
+                                                          ],
+                                                 "path":  [
+                                                              "up"
+                                                          ]
+                                             },
+                                     "description":  "Purpose: check Laravel app health. Required role: public. Required token: none. Expected response: 200 from the built-in /up route."
+                                 },
+                     "response":  [
+
+                                  ]
+                 }
+             ]
+}

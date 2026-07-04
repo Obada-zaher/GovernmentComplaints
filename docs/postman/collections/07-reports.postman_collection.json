@@ -1,0 +1,11 @@
+{
+    "info":  {
+                 "_postman_id":  "b80aea2e-d6eb-4299-a305-66566cf06be3",
+                 "name":  "07 - Reports",
+                 "description":  "Placeholder collection. Reports API routes are not implemented yet, so this collection intentionally contains no fake requests.",
+                 "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+             },
+    "item":  [
+
+             ]
+}

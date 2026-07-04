@@ -1,0 +1,74 @@
+<?php
+
+use App\Http\Controllers\Api\V1\Admin\ComplaintCategoryController;
+use App\Http\Controllers\Api\V1\Admin\ComplaintController as AdminComplaintController;
+use App\Http\Controllers\Api\V1\Admin\DepartmentController;
+use App\Http\Controllers\Api\V1\Admin\PriorityController;
+use App\Http\Controllers\Api\V1\Admin\SlaRuleController;
+use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\Citizen\ComplaintController as CitizenComplaintController;
+use App\Http\Controllers\Api\V1\Employee\ComplaintController as EmployeeComplaintController;
+use App\Http\Controllers\Api\V1\LookupController;
+use App\Http\Controllers\Api\V1\RolePingController;
+use Illuminate\Support\Facades\Route;
+
+Route::prefix('v1')->group(function (): void {
+    Route::prefix('lookups')->group(function (): void {
+        Route::get('departments', [LookupController::class, 'departments'])->name('lookups.departments');
+        Route::get('categories', [LookupController::class, 'categories'])->name('lookups.categories');
+        Route::get('priorities', [LookupController::class, 'priorities'])->name('lookups.priorities');
+        Route::get('complaint-statuses', [LookupController::class, 'complaintStatuses'])->name('lookups.complaint-statuses');
+    });
+
+    Route::prefix('auth')->group(function (): void {
+        Route::post('register', [AuthController::class, 'register'])->middleware('throttle:auth-register');
+        Route::post('login', [AuthController::class, 'login'])->middleware('throttle:auth-login');
+        Route::post('verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:auth-verify-otp');
+        Route::post('resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:auth-resend-otp');
+        Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth-forgot-password');
+        Route::post('reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth-reset-password');
+
+        Route::middleware('auth:sanctum')->group(function (): void {
+            Route::get('me', [AuthController::class, 'me']);
+            Route::post('change-password', [AuthController::class, 'changePassword'])->middleware('throttle:auth-change-password');
+            Route::post('logout', [AuthController::class, 'logout']);
+            Route::post('logout-all', [AuthController::class, 'logoutAll']);
+        });
+    });
+
+    Route::prefix('citizen')
+        ->middleware(['auth:sanctum', 'role:citizen'])
+        ->group(function (): void {
+            Route::get('ping', [RolePingController::class, 'citizen']);
+            Route::get('complaints', [CitizenComplaintController::class, 'index']);
+            Route::post('complaints', [CitizenComplaintController::class, 'store']);
+            Route::get('complaints/{complaint}', [CitizenComplaintController::class, 'show']);
+            Route::post('complaints/{complaint}/attachments', [CitizenComplaintController::class, 'addAttachments']);
+        });
+
+    Route::prefix('employee')
+        ->middleware(['auth:sanctum', 'role:employee'])
+        ->group(function (): void {
+            Route::get('ping', [RolePingController::class, 'employee']);
+            Route::get('complaints', [EmployeeComplaintController::class, 'index']);
+            Route::get('complaints/{complaint}', [EmployeeComplaintController::class, 'show']);
+            Route::patch('complaints/{complaint}/status', [EmployeeComplaintController::class, 'updateStatus']);
+        });
+
+    Route::prefix('admin')
+        ->middleware(['auth:sanctum', 'role:admin'])
+        ->group(function (): void {
+            Route::get('ping', [RolePingController::class, 'admin']);
+            Route::get('complaints', [AdminComplaintController::class, 'index']);
+            Route::get('complaints/{complaint}', [AdminComplaintController::class, 'show']);
+            Route::patch('complaints/{complaint}/assign', [AdminComplaintController::class, 'assign']);
+            Route::patch('complaints/{complaint}/department', [AdminComplaintController::class, 'changeDepartment']);
+            Route::patch('complaints/{complaint}/priority', [AdminComplaintController::class, 'changePriority']);
+            Route::patch('complaints/{complaint}/status', [AdminComplaintController::class, 'updateStatus']);
+            Route::apiResource('departments', DepartmentController::class);
+            Route::apiResource('categories', ComplaintCategoryController::class)
+                ->parameters(['categories' => 'category']);
+            Route::apiResource('priorities', PriorityController::class);
+            Route::apiResource('sla-rules', SlaRuleController::class);
+        });
+});

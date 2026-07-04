@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Admin\DepartmentController;
 use App\Http\Controllers\Api\V1\Admin\PriorityController;
 use App\Http\Controllers\Api\V1\Admin\SlaRuleController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\Citizen\ComplaintController as CitizenComplaintController;
 use App\Http\Controllers\Api\V1\LookupController;
 use App\Http\Controllers\Api\V1\RolePingController;
 use Illuminate\Support\Facades\Route;
@@ -29,7 +30,15 @@ Route::prefix('v1')->group(function (): void {
         });
     });
 
-    Route::middleware(['auth:sanctum', 'role:citizen'])->get('citizen/ping', [RolePingController::class, 'citizen']);
+    Route::prefix('citizen')
+        ->middleware(['auth:sanctum', 'role:citizen'])
+        ->group(function (): void {
+            Route::get('ping', [RolePingController::class, 'citizen']);
+            Route::get('complaints', [CitizenComplaintController::class, 'index']);
+            Route::post('complaints', [CitizenComplaintController::class, 'store']);
+            Route::get('complaints/{complaint}', [CitizenComplaintController::class, 'show']);
+            Route::post('complaints/{complaint}/attachments', [CitizenComplaintController::class, 'addAttachments']);
+        });
     Route::middleware(['auth:sanctum', 'role:employee'])->get('employee/ping', [RolePingController::class, 'employee']);
 
     Route::prefix('admin')

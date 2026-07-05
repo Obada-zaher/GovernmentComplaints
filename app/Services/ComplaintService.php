@@ -6,6 +6,9 @@ use App\Models\Complaint;
 use App\Models\ComplaintCategory;
 use App\Models\Priority;
 use App\Models\User;
+use App\Services\Notifications\NotificationService;
+use App\Services\Sla\SlaDeadlineService;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -15,8 +18,8 @@ class ComplaintService
         private readonly ComplaintNumberService $complaintNumberService,
         private readonly ComplaintAttachmentService $attachmentService,
         private readonly SlaDeadlineService $slaDeadlineService,
-    ) {
-    }
+        private readonly NotificationService $notificationService,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -53,6 +56,21 @@ class ComplaintService
 
             $this->attachmentService->storeMany($complaint, $citizen, $data['attachments'] ?? []);
 
+            $this->notificationService->notifyAdmins(
+                NotificationService::TYPE_COMPLAINT_CREATED,
+                $complaint,
+                'New complaint submitted',
+                "Complaint {$complaint->complaint_number} was submitted by a citizen.",
+            );
+
+            $this->notificationService->notifyDepartmentEmployees(
+                $departmentId,
+                NotificationService::TYPE_COMPLAINT_CREATED,
+                $complaint,
+                'New complaint in your department',
+                "Complaint {$complaint->complaint_number} is available for department review.",
+            );
+
             return $complaint->fresh([
                 'department',
                 'category',
@@ -65,7 +83,7 @@ class ComplaintService
     }
 
     /**
-     * @param  array<int, \Illuminate\Http\UploadedFile>  $files
+     * @param  array<int, UploadedFile>  $files
      */
     public function addAttachments(Complaint $complaint, User $citizen, array $files): Complaint
     {

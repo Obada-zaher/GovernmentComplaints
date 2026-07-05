@@ -8,6 +8,7 @@ use App\Http\Resources\Api\V1\ComplaintResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\Complaint;
 use App\Services\Complaints\ComplaintStatusService;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -17,9 +18,10 @@ class ComplaintController extends Controller
 {
     use ApiResponse;
 
-    public function __construct(private readonly ComplaintStatusService $statusService)
-    {
-    }
+    public function __construct(
+        private readonly ComplaintStatusService $statusService,
+        private readonly NotificationService $notificationService,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -105,7 +107,33 @@ class ComplaintController extends Controller
             return $this->statusService->updateStatus($complaint, $employee, $data['status'], $data['note'] ?? null);
         });
 
+        $this->notifyStatusChangedByEmployee($complaint, $data['status']);
+
         return $this->successResponse('Complaint status updated successfully.', new ComplaintResource($this->loadComplaint($complaint)));
+    }
+
+    private function notifyStatusChangedByEmployee(Complaint $complaint, string $status): void
+    {
+        $citizenType = $status === 'resolved'
+            ? NotificationService::TYPE_COMPLAINT_RESOLVED
+            : NotificationService::TYPE_COMPLAINT_STATUS_UPDATED;
+
+        $this->notificationService->notifyUser(
+            $complaint->citizen,
+            $citizenType,
+            $complaint,
+            $status === 'resolved' ? 'Your complaint was resolved' : 'Complaint status updated',
+            "Complaint {$complaint->complaint_number} status is now {$status}.",
+        );
+
+        if ($status === 'escalated') {
+            $this->notificationService->notifyAdmins(
+                NotificationService::TYPE_COMPLAINT_STATUS_UPDATED,
+                $complaint,
+                'Complaint escalated',
+                "Complaint {$complaint->complaint_number} was escalated by an employee.",
+            );
+        }
     }
 
     private function canAccess(Complaint $complaint, mixed $employee): bool

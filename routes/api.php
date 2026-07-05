@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Admin\ClassificationRuleController;
 use App\Http\Controllers\Api\V1\Admin\ComplaintCategoryController;
 use App\Http\Controllers\Api\V1\Admin\ComplaintController as AdminComplaintController;
 use App\Http\Controllers\Api\V1\Admin\DepartmentController;
+use App\Http\Controllers\Api\V1\Admin\NotificationDeliveryLogController;
 use App\Http\Controllers\Api\V1\Admin\PriorityController;
 use App\Http\Controllers\Api\V1\Admin\ReportController;
 use App\Http\Controllers\Api\V1\Admin\SlaRuleController;
@@ -14,7 +15,9 @@ use App\Http\Controllers\Api\V1\Classification\ComplaintClassificationController
 use App\Http\Controllers\Api\V1\Employee\ComplaintController as EmployeeComplaintController;
 use App\Http\Controllers\Api\V1\LookupController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\NotificationPreferenceController;
 use App\Http\Controllers\Api\V1\RolePingController;
+use App\Http\Controllers\Api\V1\UserDeviceTokenController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -50,6 +53,15 @@ Route::prefix('v1')->group(function (): void {
             Route::patch('{notification}/read', [NotificationController::class, 'read']);
             Route::delete('{notification}', [NotificationController::class, 'destroy']);
         });
+
+    Route::middleware('auth:sanctum')->group(function (): void {
+        Route::get('device-tokens', [UserDeviceTokenController::class, 'index']);
+        Route::post('device-tokens', [UserDeviceTokenController::class, 'store']);
+        Route::delete('device-tokens/{deviceToken}', [UserDeviceTokenController::class, 'destroy']);
+
+        Route::get('notification-preferences', [NotificationPreferenceController::class, 'show']);
+        Route::patch('notification-preferences', [NotificationPreferenceController::class, 'update']);
+    });
 
     Route::prefix('classification')
         ->middleware('auth:sanctum')
@@ -89,6 +101,8 @@ Route::prefix('v1')->group(function (): void {
             Route::patch('complaints/{complaint}/department', [AdminComplaintController::class, 'changeDepartment']);
             Route::patch('complaints/{complaint}/priority', [AdminComplaintController::class, 'changePriority']);
             Route::patch('complaints/{complaint}/status', [AdminComplaintController::class, 'updateStatus']);
+            Route::get('notification-delivery-logs', [NotificationDeliveryLogController::class, 'index']);
+            Route::get('notification-delivery-logs/{notificationDeliveryLog}', [NotificationDeliveryLogController::class, 'show']);
             Route::prefix('reports')->group(function (): void {
                 Route::get('overview', [ReportController::class, 'overview']);
                 Route::get('complaints-by-status', [ReportController::class, 'complaintsByStatus']);

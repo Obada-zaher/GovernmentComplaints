@@ -6,6 +6,7 @@ use Database\Factories\UserNotificationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class UserNotification extends Model
 {
@@ -38,5 +39,10 @@ class UserNotification extends Model
     public function complaint(): BelongsTo
     {
         return $this->belongsTo(Complaint::class);
+    }
+
+    public function deliveryLogs(): HasMany
+    {
+        return $this->hasMany(NotificationDeliveryLog::class);
     }
 }

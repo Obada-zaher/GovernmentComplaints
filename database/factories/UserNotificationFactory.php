@@ -17,7 +17,7 @@ class UserNotificationFactory extends Factory
         return [
             'user_id' => User::factory(),
             'complaint_id' => Complaint::factory(),
-            'type' => 'complaint_status_changed',
+            'type' => 'complaint_status_updated',
             'title' => fake()->sentence(4),
             'body' => fake()->optional()->paragraph(),
             'data' => ['status' => 'submitted'],

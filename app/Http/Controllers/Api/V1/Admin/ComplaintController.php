@@ -13,7 +13,8 @@ use App\Models\Complaint;
 use App\Models\ComplaintCategory;
 use App\Models\User;
 use App\Services\Complaints\ComplaintStatusService;
-use App\Services\SlaDeadlineService;
+use App\Services\Notifications\NotificationService;
+use App\Services\Sla\SlaDeadlineService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -26,8 +27,8 @@ class ComplaintController extends Controller
     public function __construct(
         private readonly ComplaintStatusService $statusService,
         private readonly SlaDeadlineService $slaDeadlineService,
-    ) {
-    }
+        private readonly NotificationService $notificationService,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -113,6 +114,21 @@ class ComplaintController extends Controller
             return $complaint->fresh();
         });
 
+        $this->notificationService->notifyUser(
+            $employee,
+            NotificationService::TYPE_COMPLAINT_ASSIGNED,
+            $complaint,
+            'Complaint assigned to you',
+            "Complaint {$complaint->complaint_number} has been assigned to you.",
+        );
+        $this->notificationService->notifyUser(
+            $complaint->citizen,
+            NotificationService::TYPE_COMPLAINT_ASSIGNED,
+            $complaint,
+            'Your complaint was assigned',
+            "Complaint {$complaint->complaint_number} has been assigned for processing.",
+        );
+
         return $this->successResponse('Complaint assigned successfully.', new ComplaintResource($this->loadComplaint($complaint)));
     }
 
@@ -162,7 +178,45 @@ class ComplaintController extends Controller
         $data = $request->validated();
         $complaint = $this->statusService->updateStatus($complaint, $request->user(), $data['status'], $data['note'] ?? null);
 
+        $this->notifyStatusChangedByAdmin($complaint, $data['status']);
+
         return $this->successResponse('Complaint status updated successfully.', new ComplaintResource($this->loadComplaint($complaint)));
+    }
+
+    private function notifyStatusChangedByAdmin(Complaint $complaint, string $status): void
+    {
+        $citizenType = match ($status) {
+            'resolved' => NotificationService::TYPE_COMPLAINT_RESOLVED,
+            'closed' => NotificationService::TYPE_COMPLAINT_CLOSED,
+            default => NotificationService::TYPE_COMPLAINT_STATUS_UPDATED,
+        };
+
+        $this->notificationService->notifyUser(
+            $complaint->citizen,
+            $citizenType,
+            $complaint,
+            $this->statusNotificationTitle($status),
+            "Complaint {$complaint->complaint_number} status is now {$status}.",
+        );
+
+        if ($complaint->assignedEmployee) {
+            $this->notificationService->notifyUser(
+                $complaint->assignedEmployee,
+                NotificationService::TYPE_COMPLAINT_STATUS_UPDATED,
+                $complaint,
+                'Complaint status updated',
+                "Complaint {$complaint->complaint_number} status is now {$status}.",
+            );
+        }
+    }
+
+    private function statusNotificationTitle(string $status): string
+    {
+        return match ($status) {
+            'resolved' => 'Your complaint was resolved',
+            'closed' => 'Your complaint was closed',
+            default => 'Complaint status updated',
+        };
     }
 
     private function shouldClearAssignedEmployee(Complaint $complaint, int $newDepartmentId): bool

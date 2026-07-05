@@ -18,6 +18,26 @@ Postman files are split by module so each team can import only what it needs.
 4. Use `05-employee-complaints / Employee - Complaints` to move the complaint through employee statuses.
 5. Show the complaint from admin, employee, or citizen collections and verify the timeline/status history.
 
+## Notifications Flow
+
+1. Use `01-auth` to log in as citizen, admin, and employee.
+2. Use `04-citizen-complaints` to create a complaint.
+3. Use `03-admin-management / Admin - Complaints` to assign the complaint.
+4. Use `05-employee-complaints / Employee - Complaints` or admin status update requests to update status.
+5. Run this locally when you need to generate SLA breach notifications:
+
+```bash
+php artisan complaints:check-sla
+```
+
+6. Use `06-notifications` to list notifications, save `notification_id`, check unread count, mark read, mark all read, and delete a notification.
+
+Notification recipients:
+
+- Citizens receive assignment, status, resolved, and closed updates for their own complaints.
+- Assigned employees receive assignment and SLA breach notifications.
+- Active admins receive new complaint, employee escalation, and SLA breach notifications.
+
 ## Mailtrap OTP Flow
 
 Register, login, resend OTP, and forgot password requests send email through Mailtrap.
@@ -43,7 +63,7 @@ OTP codes and reset tokens are never returned by the API response.
 - `03-admin-management.postman_collection.json`: admin dashboard setup APIs.
 - `04-citizen-complaints.postman_collection.json`: citizen web/mobile complaint creation and tracking.
 - `05-employee-complaints.postman_collection.json`: employee-accessible complaint list, show, and status processing.
-- `06-notifications.postman_collection.json`: placeholder; notification APIs are not implemented yet.
+- `06-notifications.postman_collection.json`: authenticated notification list, unread count, mark read, read all, and delete requests.
 - `07-reports.postman_collection.json`: placeholder; report APIs are not implemented yet.
 
 ## Team Usage
@@ -57,4 +77,4 @@ OTP codes and reset tokens are never returned by the API response.
 
 Do not commit real tokens, OTPs, reset tokens, Mailtrap credentials, or production secrets.
 
-Before committing exported environments, reset sensitive values such as `citizen_token`, `admin_token`, `employee_token`, `citizen_otp`, `admin_otp`, `employee_otp`, and `reset_token`.
+Before committing exported environments, reset sensitive values such as `citizen_token`, `admin_token`, `employee_token`, `citizen_otp`, `admin_otp`, `employee_otp`, and `reset_token`. Also reset workflow variables such as `notification_id` if they came from a local run.

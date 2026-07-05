@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\Citizen\ComplaintController as CitizenComplaintController;
 use App\Http\Controllers\Api\V1\Employee\ComplaintController as EmployeeComplaintController;
 use App\Http\Controllers\Api\V1\LookupController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\RolePingController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +36,16 @@ Route::prefix('v1')->group(function (): void {
             Route::post('logout-all', [AuthController::class, 'logoutAll']);
         });
     });
+
+    Route::prefix('notifications')
+        ->middleware('auth:sanctum')
+        ->group(function (): void {
+            Route::get('/', [NotificationController::class, 'index']);
+            Route::get('unread-count', [NotificationController::class, 'unreadCount']);
+            Route::patch('read-all', [NotificationController::class, 'readAll']);
+            Route::patch('{notification}/read', [NotificationController::class, 'read']);
+            Route::delete('{notification}', [NotificationController::class, 'destroy']);
+        });
 
     Route::prefix('citizen')
         ->middleware(['auth:sanctum', 'role:citizen'])

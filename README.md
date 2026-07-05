@@ -214,7 +214,7 @@ Admins can manage setup data with protected endpoints:
 
 Admin endpoints require `Authorization: Bearer <admin_token>`. Use the Postman `Auth - Admin Login Flow` first, then run the `Admin - Departments`, `Admin - Categories`, `Admin - Priorities`, and `Admin - SLA Rules` folders. Public lookup folders do not require a token.
 
-Citizen complaint creation and tracking APIs are available under `/api/v1/citizen/complaints`. Employee processing, admin assignment, notifications, offline sync, and classification will be implemented in later tasks.
+Citizen complaint creation and tracking APIs are available under `/api/v1/citizen/complaints`. Employee processing, admin assignment, SLA management, and notifications are available in the current API. Offline sync, reports, and classification are separate modules.
 
 ## Citizen Complaint APIs
 
@@ -253,7 +253,7 @@ Complaint numbers are generated automatically as `GCMS-YYYY-000001`, incrementin
 
 If `category_id` is provided without `department_id`, the department is inferred from the category. If both are provided, the category must belong to that department. If `priority_id` is omitted, the API uses the seeded `medium` priority when available.
 
-`due_at` is calculated from the first active SLA rule that matches, in this order: department + category + priority, then department + priority, then priority only. If no active SLA rule matches, `due_at` remains `null`.
+`due_at` is calculated from the first active SLA rule that matches, in this order: department + category + priority, then department + priority, then category + priority, then priority only. If no active SLA rule matches, `due_at` remains `null`.
 
 In Postman, import the local Mailtrap environment, run `01-auth` to set `citizen_token`, then use `04-citizen-complaints`. The JSON create request saves `complaint_id` and `complaint_number` for the show and attachment requests.
 
@@ -294,6 +294,56 @@ Use these Postman collections for the workflow:
 - `docs/postman/collections/03-admin-management.postman_collection.json`
 - `docs/postman/collections/05-employee-complaints.postman_collection.json`
 
+## SLA and Notifications
+
+Complaint deadlines are calculated by `App\Services\Sla\SlaDeadlineService` from active SLA rules. The service uses `resolution_time_hours` and does not mark breaches. It runs when a complaint is created and when admin users change the complaint priority, department, or category.
+
+SLA matching priority:
+
+1. `department_id + category_id + priority_id`
+2. `department_id + priority_id`
+3. `category_id + priority_id`
+4. `priority_id` only
+
+Run the breach checker manually:
+
+```bash
+php artisan complaints:check-sla
+```
+
+The command checks overdue non-terminal complaints where `due_at < now()` and `is_sla_breached = false`. It marks the complaint as breached, escalates only statuses that can safely move to `escalated`, creates a system timeline record, and notifies the assigned employee plus all active admins. It is safe to run multiple times because breached complaints are skipped after the first run.
+
+For production scheduling, keep the server cron running Laravel's scheduler:
+
+```cron
+* * * * * php /path-to-project/artisan schedule:run >> /dev/null 2>&1
+```
+
+This Laravel 12 project schedules `complaints:check-sla` every 15 minutes in `bootstrap/app.php`.
+
+Supported notification types:
+
+- `complaint_created`
+- `complaint_assigned`
+- `complaint_status_updated`
+- `sla_breached`
+- `complaint_resolved`
+- `complaint_closed`
+
+Notification API endpoints require `Authorization: Bearer <token>` and always scope records to the authenticated user:
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| GET | `/api/v1/notifications` | List own notifications, with `unread=true`, `type`, and `per_page` filters |
+| GET | `/api/v1/notifications/unread-count` | Return own unread count |
+| PATCH | `/api/v1/notifications/{notification}/read` | Mark one owned notification as read |
+| PATCH | `/api/v1/notifications/read-all` | Mark all own notifications as read |
+| DELETE | `/api/v1/notifications/{notification}` | Delete one owned notification |
+
+Database notifications are the reliable channel. Mailtrap email is also sent for important complaint events: `complaint_assigned`, `sla_breached`, and `complaint_resolved`. Auth OTP and password reset emails remain separate from this service.
+
+Postman notification requests are in `docs/postman/collections/06-notifications.postman_collection.json`.
+
 ## Development Commands
 
 ```bash
@@ -301,5 +351,6 @@ php artisan migrate:fresh --seed
 php artisan config:clear
 php artisan cache:clear
 php artisan storage:link
+php artisan complaints:check-sla
 php artisan test
 ```

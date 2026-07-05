@@ -6,6 +6,7 @@ use App\Models\Complaint;
 use App\Models\ComplaintCategory;
 use App\Models\Priority;
 use App\Models\User;
+use App\Services\Classification\ComplaintClassificationService;
 use App\Services\Notifications\NotificationService;
 use App\Services\Sla\SlaDeadlineService;
 use Illuminate\Http\UploadedFile;
@@ -19,6 +20,7 @@ class ComplaintService
         private readonly ComplaintAttachmentService $attachmentService,
         private readonly SlaDeadlineService $slaDeadlineService,
         private readonly NotificationService $notificationService,
+        private readonly ComplaintClassificationService $classificationService,
     ) {}
 
     /**
@@ -27,6 +29,9 @@ class ComplaintService
     public function create(User $citizen, array $data): Complaint
     {
         return DB::transaction(function () use ($citizen, $data): Complaint {
+            $classification = $this->classificationService->classify($data['title'], $data['description']);
+            $classificationAutoAssigned = false;
+            [$data, $classificationAutoAssigned] = $this->applyClassification($data, $classification);
             $category = $this->categoryFromData($data);
             $departmentId = $this->resolveDepartmentId($data, $category);
             $priorityId = $this->resolvePriorityId($data);
@@ -45,8 +50,17 @@ class ComplaintService
                 'address' => $data['address'] ?? null,
                 'source' => $data['source'] ?? 'web',
                 'client_uuid' => $data['client_uuid'] ?? null,
+                'classification_confidence' => $classification['confidence'],
                 'due_at' => $this->slaDeadlineService->calculate($departmentId, $category?->id, $priorityId),
             ]);
+
+            $this->classificationService->log(
+                $data['title'],
+                $data['description'],
+                $classification,
+                $complaint,
+                $classificationAutoAssigned,
+            );
 
             $complaint->statusHistories()->create([
                 'changed_by' => $citizen->id,
@@ -72,7 +86,7 @@ class ComplaintService
                 "Complaint {$complaint->complaint_number} is available for department review.",
             );
 
-            return $complaint->fresh([
+            $complaint = $complaint->fresh([
                 'department',
                 'category',
                 'priority',
@@ -80,6 +94,10 @@ class ComplaintService
                 'attachments',
                 'statusHistories.changedBy',
             ]);
+
+            $complaint->setAttribute('classification_auto_assigned', $classificationAutoAssigned);
+
+            return $complaint;
         });
     }
 
@@ -151,5 +169,40 @@ class ComplaintService
         }
 
         return Priority::query()->where('code', 'medium')->value('id');
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $classification
+     * @return array{0: array<string, mixed>, 1: bool}
+     */
+    private function applyClassification(array $data, array $classification): array
+    {
+        $explicitDepartment = ! empty($data['department_id']);
+        $explicitCategory = ! empty($data['category_id']);
+        $autoAssigned = false;
+
+        if (($explicitDepartment && $explicitCategory) || ($classification['confidence'] ?? 0) < 60) {
+            return [$data, false];
+        }
+
+        $predictedDepartmentId = $classification['department']['id'] ?? null;
+        $predictedCategoryId = $classification['category']['id'] ?? null;
+
+        if (! $explicitDepartment && ! $explicitCategory && $predictedDepartmentId) {
+            $data['department_id'] = $predictedDepartmentId;
+            $autoAssigned = true;
+        }
+
+        if (! $explicitCategory && $predictedCategoryId) {
+            $predictedCategory = ComplaintCategory::query()->find($predictedCategoryId);
+
+            if ($predictedCategory && (empty($data['department_id']) || (int) $predictedCategory->department_id === (int) $data['department_id'])) {
+                $data['category_id'] = $predictedCategoryId;
+                $autoAssigned = true;
+            }
+        }
+
+        return [$data, $autoAssigned];
     }
 }

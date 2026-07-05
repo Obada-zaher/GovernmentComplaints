@@ -18,6 +18,9 @@ class ComplaintClassificationRule extends Model
         'keyword',
         'weight',
         'is_active',
+        'language',
+        'normalized_keyword',
+        'notes',
     ];
 
     protected function casts(): array

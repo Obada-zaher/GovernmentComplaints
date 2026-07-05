@@ -26,6 +26,11 @@ class ComplaintResource extends JsonResource
             'source' => $this->source,
             'client_uuid' => $this->client_uuid,
             'classification_confidence' => $this->classification_confidence,
+            'classification' => $this->when($this->classification_confidence !== null, fn () => [
+                'auto_assigned' => $this->classification_auto_assigned,
+                'confidence' => (float) $this->classification_confidence,
+                'method' => 'rule_based_weighted_keywords',
+            ]),
             'due_at' => $this->due_at?->toISOString(),
             'first_response_at' => $this->first_response_at?->toISOString(),
             'resolved_at' => $this->resolved_at?->toISOString(),

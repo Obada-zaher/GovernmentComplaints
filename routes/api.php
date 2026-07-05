@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\ClassificationRuleController;
 use App\Http\Controllers\Api\V1\Admin\ComplaintCategoryController;
 use App\Http\Controllers\Api\V1\Admin\ComplaintController as AdminComplaintController;
 use App\Http\Controllers\Api\V1\Admin\DepartmentController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Api\V1\Admin\SlaRuleController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\Citizen\ComplaintController as CitizenComplaintController;
 use App\Http\Controllers\Api\V1\Citizen\OfflineComplaintSyncController;
+use App\Http\Controllers\Api\V1\Classification\ComplaintClassificationController;
 use App\Http\Controllers\Api\V1\Employee\ComplaintController as EmployeeComplaintController;
 use App\Http\Controllers\Api\V1\LookupController;
 use App\Http\Controllers\Api\V1\NotificationController;
@@ -47,6 +49,12 @@ Route::prefix('v1')->group(function (): void {
             Route::patch('read-all', [NotificationController::class, 'readAll']);
             Route::patch('{notification}/read', [NotificationController::class, 'read']);
             Route::delete('{notification}', [NotificationController::class, 'destroy']);
+        });
+
+    Route::prefix('classification')
+        ->middleware('auth:sanctum')
+        ->group(function (): void {
+            Route::post('complaints/preview', [ComplaintClassificationController::class, 'preview']);
         });
 
     Route::prefix('citizen')
@@ -99,5 +107,6 @@ Route::prefix('v1')->group(function (): void {
                 ->parameters(['categories' => 'category']);
             Route::apiResource('priorities', PriorityController::class);
             Route::apiResource('sla-rules', SlaRuleController::class);
+            Route::apiResource('classification-rules', ClassificationRuleController::class);
         });
 });

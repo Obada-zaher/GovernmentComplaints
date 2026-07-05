@@ -30,6 +30,18 @@ Postman files are split by module so each team can import only what it needs.
 
 Mobile/web clients should generate one `client_uuid` per local offline complaint, store it locally, and reuse it for retries until the server returns a synced complaint.
 
+## Classification Flow
+
+1. Use `01-auth` to log in as admin and save `admin_token`.
+2. Open `08-classification / Admin - Classification Rules` to review existing rules or create a new keyword rule.
+3. Use `01-auth` to log in as citizen and save `citizen_token`.
+4. Open `08-classification / Classification - Preview`.
+5. Run a preview request to see the suggested department, category, confidence, matched keywords, and alternatives.
+6. Create a complaint without category or department values using `04-citizen-complaints`.
+7. Verify the complaint response includes auto-assigned department/category when classifier confidence is high enough.
+
+Classification is rule-based intelligent classification v1. It uses keyword weights and does not call external AI services.
+
 ## Notifications Flow
 
 1. Use `01-auth` to log in as citizen, admin, and employee.
@@ -92,16 +104,17 @@ OTP codes and reset tokens are never returned by the API response.
 - `05-employee-complaints.postman_collection.json`: employee-accessible complaint list, show, and status processing.
 - `06-notifications.postman_collection.json`: authenticated notification list, unread count, mark read, read all, and delete requests.
 - `07-reports.postman_collection.json`: admin-only overview, distribution, SLA, employee performance, trends, and report snapshot requests.
+- `08-classification.postman_collection.json`: authenticated classification preview and admin classification rule management.
 
 ## Team Usage
 
 - Frontend auth team: use `01-auth`.
-- Admin dashboard team: use `03-admin-management`, `06-notifications`, and `07-reports`.
-- Citizen web/mobile team: use `04-citizen-complaints`.
+- Admin dashboard team: use `03-admin-management`, `06-notifications`, `07-reports`, and `08-classification`.
+- Citizen web/mobile team: use `04-citizen-complaints` and the preview folder in `08-classification`.
 - Employee dashboard team: use `05-employee-complaints`.
 
 ## Security Notes
 
 Do not commit real tokens, OTPs, reset tokens, Mailtrap credentials, or production secrets.
 
-Before committing exported environments, reset sensitive values such as `citizen_token`, `admin_token`, `employee_token`, `citizen_otp`, `admin_otp`, `employee_otp`, and `reset_token`. Also reset workflow variables such as `notification_id`, `snapshot_id`, `offline_submission_id`, and `offline_client_uuid` if they came from a local run.
+Before committing exported environments, reset sensitive values such as `citizen_token`, `admin_token`, `employee_token`, `citizen_otp`, `admin_otp`, `employee_otp`, and `reset_token`. Also reset workflow variables such as `notification_id`, `snapshot_id`, `offline_submission_id`, `offline_client_uuid`, and `classification_rule_id` if they came from a local run.

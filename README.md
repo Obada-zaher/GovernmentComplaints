@@ -169,6 +169,7 @@ Collections:
 - `docs/postman/collections/05-employee-complaints.postman_collection.json`
 - `docs/postman/collections/06-notifications.postman_collection.json`
 - `docs/postman/collections/07-reports.postman_collection.json`
+- `docs/postman/collections/08-classification.postman_collection.json`
 
 Run the API locally:
 
@@ -214,7 +215,7 @@ Admins can manage setup data with protected endpoints:
 
 Admin endpoints require `Authorization: Bearer <admin_token>`. Use the Postman `Auth - Admin Login Flow` first, then run the `Admin - Departments`, `Admin - Categories`, `Admin - Priorities`, and `Admin - SLA Rules` folders. Public lookup folders do not require a token.
 
-Citizen complaint creation, tracking, and offline sync APIs are available under `/api/v1/citizen`. Employee processing, admin assignment, SLA management, notifications, and admin reports are available in the current API. Classification is a separate module.
+Citizen complaint creation, tracking, and offline sync APIs are available under `/api/v1/citizen`. Employee processing, admin assignment, SLA management, notifications, admin reports, and rule-based complaint classification are available in the current API.
 
 ## Citizen Complaint APIs
 
@@ -391,6 +392,35 @@ Attachments can be synced with `multipart/form-data` using `attachments[]`. Allo
 The `offline_submissions` table stores the citizen, `client_uuid`, submitted payload, status (`pending`, `synced`, or `failed`), synced complaint id, error message, offline timestamp, and sync timestamp. Clients can safely retry failed or pending local submissions with the same `client_uuid`; the backend will either retry processing or return the already-synced complaint.
 
 Postman requests are in `docs/postman/collections/04-citizen-complaints.postman_collection.json` under `Citizen - Offline Sync`.
+
+## Intelligent Complaint Classification
+
+Intelligent complaint classification is a deterministic rule-based v1 that suggests department and category values from complaint title and description. It does not call external AI APIs, does not require a Python service, and can later be replaced by a Python or ML service behind the same API contract.
+
+Admins manage keyword rules. Each active rule has a keyword, weight, optional department, optional category, language, and notes. The classifier normalizes the complaint text, matches active keywords, adds rule weights to category and department candidates, and returns the highest scoring prediction.
+
+Confidence is calculated as:
+
+```text
+winning_score / total_matched_score * 100
+```
+
+The confidence value is rounded to two decimals. If no keyword matches, the API returns `department = null`, `category = null`, and `confidence = 0`.
+
+When citizens create complaints, or when offline complaints are synced, the classifier runs automatically. If department or category is missing and confidence is at least 60, the API fills the missing values from the prediction. Explicit user-selected department/category values are never overwritten. The stored `classification_confidence` records the classifier result for auditing and future analytics.
+
+Classification endpoints:
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/api/v1/classification/complaints/preview` | Bearer token | Preview the predicted department/category without creating a complaint |
+| GET | `/api/v1/admin/classification-rules` | admin | List rules with filters |
+| POST | `/api/v1/admin/classification-rules` | admin | Create a keyword rule |
+| GET | `/api/v1/admin/classification-rules/{classificationRule}` | admin | Show one rule |
+| PUT | `/api/v1/admin/classification-rules/{classificationRule}` | admin | Update one rule |
+| DELETE | `/api/v1/admin/classification-rules/{classificationRule}` | admin | Delete one rule |
+
+Frontend clients can call the preview endpoint before submit to show suggested department/category choices, then still send explicit values if the citizen chooses a different category. The Postman collection is `docs/postman/collections/08-classification.postman_collection.json`.
 
 ## Development Commands
 

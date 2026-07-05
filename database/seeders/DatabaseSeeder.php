@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             ComplaintCategoriesSeeder::class,
             PrioritiesSeeder::class,
             SlaRulesSeeder::class,
+            ClassificationRuleSeeder::class,
             UsersSeeder::class,
         ]);
     }

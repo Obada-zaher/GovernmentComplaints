@@ -1,0 +1,617 @@
+openapi: 3.0.3
+info:
+  title: Government Complaint Management System API
+  version: 1.0.0
+  description: |
+    Laravel REST API for a Government Complaint Management System.
+    All application endpoints are under `/api/v1` and use the shared success/error envelope.
+servers:
+  - url: http://127.0.0.1:8000/api/v1
+    description: Local Laravel server
+security:
+  - bearerAuth: []
+tags:
+  - name: Health
+  - name: Auth
+  - name: Lookups
+  - name: Citizen Complaints
+  - name: Admin Management
+  - name: Employee Complaints
+  - name: Notifications
+  - name: Reports
+  - name: Classification
+paths:
+  /health:
+    get:
+      tags: [Health]
+      security: []
+      summary: Public system health check
+      responses:
+        "200":
+          description: Health status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelope"
+              example:
+                success: true
+                message: System health retrieved successfully.
+                data:
+                  app: Government Complaints Management System
+                  status: ok
+                  environment: local
+                  database: connected
+                  queue: configured
+                  time: "2026-07-05T12:00:00Z"
+                  version: 1.0.0
+                meta: {}
+  /auth/register:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Register a citizen and send OTP through Mailtrap
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201": { $ref: "#/components/responses/Success" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /auth/login:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Login with email/phone and password, then send OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login, password]
+              properties:
+                login: { type: string, example: citizen@gcms.test }
+                password: { type: string, example: password }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+  /auth/verify-otp:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Verify OTP and issue Sanctum token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, otp, purpose]
+              properties:
+                user_id: { type: integer, example: 3 }
+                otp: { type: string, example: "123456" }
+                purpose: { type: string, example: login }
+                device_name: { type: string, example: Postman }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /auth/resend-otp:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Resend OTP
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Send password reset token email
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Reset password with token
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Return authenticated user profile
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Change current user's password
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke current token
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /auth/logout-all:
+    post:
+      tags: [Auth]
+      summary: Revoke all tokens
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /lookups/departments:
+    get:
+      tags: [Lookups]
+      security: []
+      summary: Public active departments lookup
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /lookups/categories:
+    get:
+      tags: [Lookups]
+      security: []
+      summary: Public complaint categories lookup
+      parameters:
+        - { name: department_id, in: query, schema: { type: integer } }
+        - { name: department_code, in: query, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /lookups/priorities:
+    get:
+      tags: [Lookups]
+      security: []
+      summary: Public priorities lookup
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /lookups/complaint-statuses:
+    get:
+      tags: [Lookups]
+      security: []
+      summary: Public complaint status lookup
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /citizen/complaints:
+    get:
+      tags: [Citizen Complaints]
+      summary: Citizen lists own complaints
+      description: Requires `auth:sanctum` and `role:citizen`.
+      parameters:
+        - { name: status, in: query, schema: { type: string } }
+        - { name: per_page, in: query, schema: { type: integer, maximum: 100 } }
+      responses:
+        "200": { $ref: "#/components/responses/PaginatedSuccess" }
+    post:
+      tags: [Citizen Complaints]
+      summary: Citizen creates complaint
+      description: Supports JSON and multipart form-data with `attachments[]`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComplaintCreateRequest"
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ComplaintCreateRequest"
+      responses:
+        "201": { $ref: "#/components/responses/Success" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /citizen/complaints/{complaint}:
+    get:
+      tags: [Citizen Complaints]
+      summary: Citizen shows one owned complaint
+      parameters:
+        - $ref: "#/components/parameters/ComplaintId"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "403": { $ref: "#/components/responses/Error" }
+  /citizen/complaints/{complaint}/attachments:
+    post:
+      tags: [Citizen Complaints]
+      summary: Add attachments to owned complaint
+      parameters:
+        - $ref: "#/components/parameters/ComplaintId"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                attachments:
+                  type: array
+                  items: { type: string, format: binary }
+      responses:
+        "201": { $ref: "#/components/responses/Success" }
+  /citizen/offline/complaints/sync:
+    post:
+      tags: [Citizen Complaints]
+      summary: Sync one offline complaint idempotently by client_uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/ComplaintCreateRequest"
+                - type: object
+                  required: [client_uuid]
+                  properties:
+                    client_uuid: { type: string, example: offline-uuid-123 }
+                    created_offline_at: { type: string, format: date-time }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "201": { $ref: "#/components/responses/Success" }
+  /citizen/offline/submissions:
+    get:
+      tags: [Citizen Complaints]
+      summary: Citizen lists own offline submissions
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [pending, synced, failed] } }
+        - { name: date_from, in: query, schema: { type: string, format: date } }
+        - { name: date_to, in: query, schema: { type: string, format: date } }
+      responses:
+        "200": { $ref: "#/components/responses/PaginatedSuccess" }
+  /citizen/offline/submissions/{offlineSubmission}:
+    get:
+      tags: [Citizen Complaints]
+      summary: Citizen shows one owned offline submission
+      parameters:
+        - { name: offlineSubmission, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "403": { $ref: "#/components/responses/Error" }
+  /employee/complaints:
+    get:
+      tags: [Employee Complaints]
+      summary: Employee lists assigned or department-accessible complaints
+      description: Requires `role:employee`.
+      responses:
+        "200": { $ref: "#/components/responses/PaginatedSuccess" }
+  /employee/complaints/{complaint}:
+    get:
+      tags: [Employee Complaints]
+      summary: Employee shows accessible complaint
+      parameters:
+        - $ref: "#/components/parameters/ComplaintId"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /employee/complaints/{complaint}/status:
+    patch:
+      tags: [Employee Complaints]
+      summary: Employee updates complaint status within lifecycle rules
+      parameters:
+        - $ref: "#/components/parameters/ComplaintId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, example: in_progress }
+                note: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /admin/complaints:
+    get:
+      tags: [Admin Management]
+      summary: Admin lists all complaints
+      description: Requires `role:admin`.
+      responses:
+        "200": { $ref: "#/components/responses/PaginatedSuccess" }
+  /admin/complaints/{complaint}:
+    get:
+      tags: [Admin Management]
+      summary: Admin shows any complaint
+      parameters:
+        - $ref: "#/components/parameters/ComplaintId"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /admin/complaints/{complaint}/assign:
+    patch:
+      tags: [Admin Management]
+      summary: Assign complaint to employee
+      parameters:
+        - $ref: "#/components/parameters/ComplaintId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assigned_employee_id]
+              properties:
+                assigned_employee_id: { type: integer, example: 2 }
+                note: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /admin/complaints/{complaint}/department:
+    patch:
+      tags: [Admin Management]
+      summary: Change complaint department/category
+      parameters:
+        - $ref: "#/components/parameters/ComplaintId"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /admin/complaints/{complaint}/priority:
+    patch:
+      tags: [Admin Management]
+      summary: Change complaint priority and recalculate SLA
+      parameters:
+        - $ref: "#/components/parameters/ComplaintId"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /admin/complaints/{complaint}/status:
+    patch:
+      tags: [Admin Management]
+      summary: Admin updates complaint status
+      parameters:
+        - $ref: "#/components/parameters/ComplaintId"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /admin/departments:
+    get: { tags: [Admin Management], summary: List departments, responses: { "200": { $ref: "#/components/responses/PaginatedSuccess" } } }
+    post: { tags: [Admin Management], summary: Create department, responses: { "201": { $ref: "#/components/responses/Success" }, "422": { $ref: "#/components/responses/ValidationError" } } }
+  /admin/departments/{department}:
+    get: { tags: [Admin Management], summary: Show department, parameters: [{ name: department, in: path, required: true, schema: { type: integer } }], responses: { "200": { $ref: "#/components/responses/Success" } } }
+    put: { tags: [Admin Management], summary: Update department, parameters: [{ name: department, in: path, required: true, schema: { type: integer } }], responses: { "200": { $ref: "#/components/responses/Success" } } }
+    delete: { tags: [Admin Management], summary: Delete department, parameters: [{ name: department, in: path, required: true, schema: { type: integer } }], responses: { "200": { $ref: "#/components/responses/Success" } } }
+  /admin/categories:
+    get: { tags: [Admin Management], summary: List categories, responses: { "200": { $ref: "#/components/responses/PaginatedSuccess" } } }
+    post: { tags: [Admin Management], summary: Create category, responses: { "201": { $ref: "#/components/responses/Success" } } }
+  /admin/categories/{category}:
+    get: { tags: [Admin Management], summary: Show category, parameters: [{ name: category, in: path, required: true, schema: { type: integer } }], responses: { "200": { $ref: "#/components/responses/Success" } } }
+    put: { tags: [Admin Management], summary: Update category, parameters: [{ name: category, in: path, required: true, schema: { type: integer } }], responses: { "200": { $ref: "#/components/responses/Success" } } }
+    delete: { tags: [Admin Management], summary: Delete category, parameters: [{ name: category, in: path, required: true, schema: { type: integer } }], responses: { "200": { $ref: "#/components/responses/Success" } } }
+  /admin/priorities:
+    get: { tags: [Admin Management], summary: List priorities, responses: { "200": { $ref: "#/components/responses/PaginatedSuccess" } } }
+    post: { tags: [Admin Management], summary: Create priority, responses: { "201": { $ref: "#/components/responses/Success" } } }
+  /admin/priorities/{priority}:
+    get: { tags: [Admin Management], summary: Show priority, parameters: [{ name: priority, in: path, required: true, schema: { type: integer } }], responses: { "200": { $ref: "#/components/responses/Success" } } }
+    put: { tags: [Admin Management], summary: Update priority, parameters: [{ name: priority, in: path, required: true, schema: { type: integer } }], responses: { "200": { $ref: "#/components/responses/Success" } } }
+    delete: { tags: [Admin Management], summary: Delete priority, parameters: [{ name: priority, in: path, required: true, schema: { type: integer } }], responses: { "200": { $ref: "#/components/responses/Success" } } }
+  /admin/sla-rules:
+    get: { tags: [Admin Management], summary: List SLA rules, responses: { "200": { $ref: "#/components/responses/PaginatedSuccess" } } }
+    post: { tags: [Admin Management], summary: Create SLA rule, responses: { "201": { $ref: "#/components/responses/Success" } } }
+  /admin/sla-rules/{sla_rule}:
+    get: { tags: [Admin Management], summary: Show SLA rule, parameters: [{ name: sla_rule, in: path, required: true, schema: { type: integer } }], responses: { "200": { $ref: "#/components/responses/Success" } } }
+    put: { tags: [Admin Management], summary: Update SLA rule, parameters: [{ name: sla_rule, in: path, required: true, schema: { type: integer } }], responses: { "200": { $ref: "#/components/responses/Success" } } }
+    delete: { tags: [Admin Management], summary: Delete SLA rule, parameters: [{ name: sla_rule, in: path, required: true, schema: { type: integer } }], responses: { "200": { $ref: "#/components/responses/Success" } } }
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: List current user's notifications
+      parameters:
+        - { name: unread, in: query, schema: { type: boolean } }
+        - { name: type, in: query, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/PaginatedSuccess" }
+  /notifications/unread-count:
+    get: { tags: [Notifications], summary: Count unread notifications, responses: { "200": { $ref: "#/components/responses/Success" } } }
+  /notifications/read-all:
+    patch: { tags: [Notifications], summary: Mark all own notifications as read, responses: { "200": { $ref: "#/components/responses/Success" } } }
+  /notifications/{notification}/read:
+    patch:
+      tags: [Notifications]
+      summary: Mark one owned notification as read
+      parameters:
+        - { name: notification, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "403": { $ref: "#/components/responses/Error" }
+  /notifications/{notification}:
+    delete:
+      tags: [Notifications]
+      summary: Delete one owned notification
+      parameters:
+        - { name: notification, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /device-tokens:
+    get: { tags: [Notifications], summary: List own active device tokens, responses: { "200": { $ref: "#/components/responses/Success" } } }
+    post:
+      tags: [Notifications]
+      summary: Register/update own device token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, platform]
+              properties:
+                token: { type: string }
+                platform: { type: string, enum: [web, android, ios] }
+                device_name: { type: string }
+                app_version: { type: string }
+      responses:
+        "201": { $ref: "#/components/responses/Success" }
+  /device-tokens/{deviceToken}:
+    delete:
+      tags: [Notifications]
+      summary: Deactivate owned device token
+      parameters:
+        - { name: deviceToken, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /notification-preferences:
+    get: { tags: [Notifications], summary: Get own notification preferences, responses: { "200": { $ref: "#/components/responses/Success" } } }
+    patch:
+      tags: [Notifications]
+      summary: Update own notification preferences
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /admin/notification-delivery-logs:
+    get:
+      tags: [Admin Management]
+      summary: Admin lists notification delivery logs
+      parameters:
+        - { name: channel, in: query, schema: { type: string, enum: [database, email, push, sms] } }
+        - { name: status, in: query, schema: { type: string, enum: [pending, sent, failed, skipped] } }
+        - { name: type, in: query, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/PaginatedSuccess" }
+  /admin/notification-delivery-logs/{notificationDeliveryLog}:
+    get:
+      tags: [Admin Management]
+      summary: Admin shows one delivery log
+      parameters:
+        - { name: notificationDeliveryLog, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /admin/reports/overview:
+    get: { tags: [Reports], summary: Admin overview metrics, responses: { "200": { $ref: "#/components/responses/Success" } } }
+  /admin/reports/complaints-by-status:
+    get: { tags: [Reports], summary: Complaint counts by status, responses: { "200": { $ref: "#/components/responses/Success" } } }
+  /admin/reports/complaints-by-department:
+    get: { tags: [Reports], summary: Complaint metrics by department, responses: { "200": { $ref: "#/components/responses/Success" } } }
+  /admin/reports/complaints-by-priority:
+    get: { tags: [Reports], summary: Complaint metrics by priority, responses: { "200": { $ref: "#/components/responses/Success" } } }
+  /admin/reports/sla-performance:
+    get: { tags: [Reports], summary: SLA performance metrics, responses: { "200": { $ref: "#/components/responses/Success" } } }
+  /admin/reports/employee-performance:
+    get: { tags: [Reports], summary: Employee performance metrics, responses: { "200": { $ref: "#/components/responses/Success" } } }
+  /admin/reports/complaint-trends:
+    get:
+      tags: [Reports]
+      summary: Complaint trends by day/week/month
+      parameters:
+        - { name: group_by, in: query, schema: { type: string, enum: [day, week, month] } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /admin/reports/sla-breaches:
+    get: { tags: [Reports], summary: Paginated breached/overdue complaint report, responses: { "200": { $ref: "#/components/responses/PaginatedSuccess" } } }
+  /admin/reports/snapshots:
+    get: { tags: [Reports], summary: List report snapshots, responses: { "200": { $ref: "#/components/responses/PaginatedSuccess" } } }
+    post: { tags: [Reports], summary: Store a report snapshot, responses: { "201": { $ref: "#/components/responses/Success" } } }
+  /admin/reports/snapshots/{reportSnapshot}:
+    get:
+      tags: [Reports]
+      summary: Show report snapshot
+      parameters:
+        - { name: reportSnapshot, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /classification/complaints/preview:
+    post:
+      tags: [Classification]
+      summary: Preview rule-based complaint classification
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, description]
+              properties:
+                title: { type: string, example: Street light is broken }
+                description: { type: string, example: The lamp has not worked for three days. }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /admin/classification-rules:
+    get: { tags: [Classification], summary: Admin lists classification rules, responses: { "200": { $ref: "#/components/responses/PaginatedSuccess" } } }
+    post: { tags: [Classification], summary: Admin creates classification rule, responses: { "201": { $ref: "#/components/responses/Success" } } }
+  /admin/classification-rules/{classification_rule}:
+    get: { tags: [Classification], summary: Admin shows classification rule, parameters: [{ name: classification_rule, in: path, required: true, schema: { type: integer } }], responses: { "200": { $ref: "#/components/responses/Success" } } }
+    put: { tags: [Classification], summary: Admin updates classification rule, parameters: [{ name: classification_rule, in: path, required: true, schema: { type: integer } }], responses: { "200": { $ref: "#/components/responses/Success" } } }
+    delete: { tags: [Classification], summary: Admin deletes classification rule, parameters: [{ name: classification_rule, in: path, required: true, schema: { type: integer } }], responses: { "200": { $ref: "#/components/responses/Success" } } }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+  parameters:
+    ComplaintId:
+      name: complaint
+      in: path
+      required: true
+      schema: { type: integer }
+  responses:
+    Success:
+      description: Success envelope.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SuccessEnvelope"
+          example:
+            success: true
+            message: Message here
+            data: {}
+            meta: {}
+    PaginatedSuccess:
+      description: Success envelope with pagination metadata.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SuccessEnvelope"
+          example:
+            success: true
+            message: Records retrieved successfully.
+            data: {}
+            meta:
+              current_page: 1
+              per_page: 15
+              total: 25
+    Error:
+      description: Error envelope.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            success: false
+            message: Error message here
+            errors: {}
+    ValidationError:
+      description: Validation error envelope.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            success: false
+            message: Validation failed.
+            errors:
+              title:
+                - The title field is required.
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required: [success, message, data, meta]
+      properties:
+        success: { type: boolean, example: true }
+        message: { type: string }
+        data: { type: object }
+        meta: { type: object }
+    ErrorEnvelope:
+      type: object
+      required: [success, message, errors]
+      properties:
+        success: { type: boolean, example: false }
+        message: { type: string }
+        errors: { type: object }
+    RegisterRequest:
+      type: object
+      required: [name, email, phone, national_id, password, password_confirmation]
+      properties:
+        name: { type: string, example: Citizen User }
+        email: { type: string, format: email, example: citizen@gcms.test }
+        phone: { type: string, example: "0990000003" }
+        national_id: { type: string, example: "12345678901" }
+        password: { type: string, format: password, example: password }
+        password_confirmation: { type: string, format: password, example: password }
+    ComplaintCreateRequest:
+      type: object
+      required: [title, description]
+      properties:
+        title: { type: string, example: Water leakage in street }
+        description: { type: string, example: There is a water leakage near my house. }
+        department_id: { type: integer, nullable: true, example: 1 }
+        category_id: { type: integer, nullable: true, example: 2 }
+        priority_id: { type: integer, nullable: true, example: 2 }
+        latitude: { type: number, nullable: true, example: 33.5138 }
+        longitude: { type: number, nullable: true, example: 36.2765 }
+        address: { type: string, nullable: true, example: Damascus }
+        source: { type: string, example: web }

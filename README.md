@@ -1,165 +1,185 @@
 # Government Complaint Management System API
 
-Laravel REST API backend for government complaint management.
+Laravel REST API backend for managing citizen complaints, government department workflows, SLA tracking, notifications, reports, offline sync, and rule-based complaint classification.
 
-## Auth Endpoints
+This repository is backend-only. It does not include frontend, mobile, Python AI services, Firebase client code, or real SMS gateway credentials.
 
-All API endpoints are prefixed with `/api/v1`.
+## Features
 
-| Method | Endpoint | Auth | Description |
-| --- | --- | --- | --- |
-| POST | `/api/v1/auth/register` | Public | Register a citizen and send OTP |
-| POST | `/api/v1/auth/login` | Public | Login with email or phone and send OTP |
-| POST | `/api/v1/auth/verify-otp` | Public | Verify OTP and issue Sanctum token |
-| POST | `/api/v1/auth/resend-otp` | Public, throttled | Resend OTP |
-| POST | `/api/v1/auth/forgot-password` | Public, throttled | Send password reset email |
-| POST | `/api/v1/auth/reset-password` | Public, throttled | Reset password with token |
-| GET | `/api/v1/auth/me` | Bearer token | Return current user profile |
-| POST | `/api/v1/auth/change-password` | Bearer token, throttled | Change password using current password |
-| POST | `/api/v1/auth/logout` | Bearer token | Revoke current access token |
-| POST | `/api/v1/auth/logout-all` | Bearer token | Revoke all access tokens |
+- Secure OTP-based authentication with Mailtrap for development.
+- Laravel Sanctum API tokens.
+- Role-based access for `citizen`, `employee`, and `admin`.
+- Public lookup APIs for departments, complaint categories, priorities, and statuses.
+- Citizen complaint creation, tracking, attachments, and offline sync.
+- Admin complaint review, assignment, department/category/priority changes, and lifecycle updates.
+- Employee complaint processing with timeline/status history.
+- SLA deadline calculation and breach detection command.
+- Database notifications, Mailtrap email notifications, push/SMS infrastructure, preferences, device tokens, and delivery logs.
+- Admin reports and analytics APIs.
+- Rule-based intelligent complaint classification.
+- Postman collections, OpenAPI documentation, Docker development setup, and GitHub Actions CI.
 
-## Role Ping Endpoints
+## Tech Stack
 
-These endpoints verify role-based access control.
+- PHP 8.2+
+- Laravel 12
+- Laravel Sanctum
+- MySQL
+- Database queue driver
+- Mailtrap for development email
+- Optional Firebase Cloud Messaging configuration
+- Optional SMS provider abstraction with `log` and Twilio branches
+- PHPUnit
 
-| Method | Endpoint | Required Role |
-| --- | --- | --- |
-| GET | `/api/v1/citizen/ping` | citizen |
-| GET | `/api/v1/employee/ping` | employee |
-| GET | `/api/v1/admin/ping` | admin |
+## Requirements
 
-## Response Format
+- PHP 8.2 or newer
+- Composer
+- MySQL 8 or compatible
+- Node/NPM only if you use Laravel frontend asset tooling
+- Docker Desktop if using Docker setup
 
-Success:
+## Local Installation
 
-```json
-{
-  "success": true,
-  "message": "Message here",
-  "data": {},
-  "meta": {}
-}
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate:fresh --seed
+php artisan storage:link
+php artisan serve
 ```
 
-Error:
+Local API base URL:
 
-```json
-{
-  "success": false,
-  "message": "Error message here",
-  "errors": {}
-}
+```text
+http://127.0.0.1:8000/api/v1
 ```
 
-## Seeded Test Accounts
+Health check:
 
-All seeded users use the password `password`.
+```bash
+curl http://127.0.0.1:8000/api/v1/health
+```
 
-| Role | Email | Phone |
-| --- | --- | --- |
-| admin | `admin@gcms.test` | `0990000001` |
-| employee | `employee@gcms.test` | `0990000002` |
-| citizen | `citizen@gcms.test` | `0990000003` |
+## Docker Installation
+
+```bash
+docker compose up -d --build
+docker compose exec app composer install
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate:fresh --seed
+docker compose exec app php artisan storage:link
+docker compose exec app php artisan test
+```
+
+The app is exposed at:
+
+```text
+http://localhost:8000
+```
+
+Docker services include `app`, `mysql`, `redis`, `queue`, and `scheduler`. Defaults are for local development only and do not contain production secrets.
+
+## Environment Configuration
+
+Copy `.env.example` to `.env` and configure:
+
+- `APP_URL`
+- database credentials
+- Mailtrap SMTP credentials
+- queue driver
+- optional Firebase Cloud Messaging keys
+- optional SMS provider credentials
+
+Do not commit `.env` or real credentials.
 
 ## Mailtrap Setup
 
-Mailtrap is used for development email delivery. Do not put real Mailtrap credentials in GitHub.
+Mailtrap is used for OTP, password reset, and development complaint emails.
 
 1. Create a Mailtrap account.
-2. Go to Email Sandbox and open your inbox.
-3. Open SMTP Settings / Integrations.
-4. Choose Laravel.
-5. Copy the exact SMTP credentials from your Mailtrap dashboard into your local `.env`.
-6. If Mailtrap shows a different port for your inbox, use the port from Mailtrap.
-7. Clear cached configuration:
+2. Open Email Sandbox SMTP settings.
+3. Copy the Laravel SMTP values into `.env`.
+4. Run:
 
 ```bash
 php artisan config:clear
 ```
 
-Local `.env` example:
+OTP codes and password reset tokens are never returned in API responses.
 
-```env
-MAIL_MAILER=smtp
-MAIL_HOST=sandbox.smtp.mailtrap.io
-MAIL_PORT=2525
-MAIL_USERNAME=your_mailtrap_username
-MAIL_PASSWORD=your_mailtrap_password
-MAIL_ENCRYPTION=tls
-MAIL_FROM_ADDRESS=no-reply@gcms.test
-MAIL_FROM_NAME="Government Complaints Management System"
+## Database and Demo Data
+
+Default seed:
+
+```bash
+php artisan migrate:fresh --seed
 ```
 
-OTP and password reset messages appear inside the Mailtrap inbox. OTP codes are never returned in API responses under any environment.
+Presentation/demo data:
 
-## Secure Authentication Flow
-
-Register:
-
-1. Send `POST /api/v1/auth/register`.
-2. The API creates a citizen account with `email_verified_at = null`.
-3. A 6-digit OTP is hashed in the database and emailed through Mailtrap.
-4. Copy the OTP from Mailtrap.
-5. Send `POST /api/v1/auth/verify-otp` with `purpose=register`.
-6. The API marks the email verified and returns a Sanctum bearer token.
-
-Login:
-
-1. Send `POST /api/v1/auth/login` with email or phone and password.
-2. Invalid credentials return a generic error.
-3. If the email is not verified, the API sends a `verify_email` OTP and does not return a token.
-4. If credentials are valid and email is verified, the API sends a `login` OTP through Mailtrap.
-5. Send `POST /api/v1/auth/verify-otp` with `purpose=login`.
-6. The API returns a Sanctum bearer token and user resource.
-
-Example login request:
-
-```json
-{
-  "login": "citizen@gcms.test",
-  "password": "password"
-}
+```bash
+php artisan db:seed --class=DemoDataSeeder
 ```
 
-Example verify request:
+Demo accounts use password `password`.
 
-```json
-{
-  "user_id": 3,
-  "otp": "123456",
-  "purpose": "login",
-  "device_name": "Postman"
-}
+| Role | Email |
+| --- | --- |
+| Admin | `admin@gcms.test` |
+| Employee | `employee@gcms.test` |
+| Citizen | `citizen@gcms.test` |
+
+## Running Tests
+
+```bash
+php artisan test
 ```
 
-Password recovery:
+CI runs the same test suite through GitHub Actions using MySQL and safe test environment settings.
 
-1. `POST /api/v1/auth/forgot-password` always returns a generic response.
-2. If the email exists, Mailtrap receives a password reset token email.
-3. `POST /api/v1/auth/reset-password` validates the token, changes the password, and revokes existing Sanctum tokens.
-4. Reset password does not auto-login the user.
+## Queue Worker
 
-Password management:
+Queued jobs are used for notification channels.
 
-1. `POST /api/v1/auth/change-password` requires the current password and a new confirmed password.
-2. The new password must be different from the current password.
-3. Changing password revokes other tokens and keeps the current token when possible.
-4. `POST /api/v1/auth/logout` revokes only the current token.
-5. `POST /api/v1/auth/logout-all` revokes all tokens for the user.
+```bash
+php artisan queue:work
+```
 
-Sensitive auth actions are rate-limited and recorded in `auth_events` without storing passwords, OTPs, tokens, or secrets.
+In production, run the worker under a process supervisor.
 
-## Postman Organization
+## SLA Command
 
-Postman files are split by module under `docs/postman`.
+Manual SLA breach check:
 
-Environment files:
+```bash
+php artisan complaints:check-sla
+```
 
-- `docs/postman/environments/gcms-local-mailtrap.postman_environment.json`
-- `docs/postman/environments/gcms-production-template.postman_environment.json`
+For production, run Laravel scheduler from cron:
 
-Collections:
+```cron
+* * * * * php /path-to-project/artisan schedule:run >> /dev/null 2>&1
+```
+
+## API Documentation
+
+- Human API guide: `docs/api/README.md`
+- OpenAPI YAML: `docs/openapi/gcms-api.openapi.yaml`
+- OpenAPI JSON: `docs/openapi/gcms-api.openapi.json`
+- Postman guide: `docs/postman/README.md`
+
+All protected endpoints use:
+
+```http
+Authorization: Bearer <sanctum_token>
+Accept: application/json
+```
+
+## Postman Collections
+
+Postman files are organized by module:
 
 - `docs/postman/collections/00-health.postman_collection.json`
 - `docs/postman/collections/01-auth.postman_collection.json`
@@ -171,306 +191,51 @@ Collections:
 - `docs/postman/collections/07-reports.postman_collection.json`
 - `docs/postman/collections/08-classification.postman_collection.json`
 
-Run the API locally:
+Import `docs/postman/environments/gcms-local-mailtrap.postman_environment.json`, select it, run `00-health`, then run `01-auth` to obtain tokens.
+
+## Git Workflow
+
+Recommended branch flow:
 
 ```bash
-php artisan migrate:fresh --seed
-php artisan serve
+git checkout -b feature/<short-name>
+php artisan test
+git status
 ```
 
-Select `GCMS Local Mailtrap Environment` in Postman before sending requests.
+GitHub Actions runs tests on pushes and pull requests to `main` and `dev`.
 
-Recommended auth flow:
+## Security Notes
 
-1. Import the local Mailtrap environment first.
-2. Import `01-auth`.
-3. Run Register or Login.
-4. Open Mailtrap, copy the OTP, and paste it into the matching environment variable.
-5. Run Verify OTP to save a token.
-6. Import and use the module collection you need.
+- Never commit `.env`, tokens, OTPs, Mailtrap credentials, Firebase credentials, SMS credentials, or production SMTP credentials.
+- Use HTTPS in production.
+- Set `APP_DEBUG=false` in production.
+- Use real SMTP outside development.
+- Store uploaded files and database backups securely.
+- Review `docs/security/SECURITY_CHECKLIST.md` before delivery.
 
-See `docs/postman/README.md` for the team-by-team guide. Shared tokens, OTPs, reset tokens, and exported environments containing real secrets must not be committed.
-
-## Lookups and Admin Management APIs
-
-Frontend clients can fetch dropdown data before complaint creation with public lookup endpoints:
-
-- `GET /api/v1/lookups/departments`
-- `GET /api/v1/lookups/categories`
-- `GET /api/v1/lookups/categories?department_id=1`
-- `GET /api/v1/lookups/categories?department_code=municipality`
-- `GET /api/v1/lookups/priorities`
-- `GET /api/v1/lookups/complaint-statuses`
-
-Admins can manage setup data with protected endpoints:
-
-- `GET|POST /api/v1/admin/departments`
-- `GET|PUT|DELETE /api/v1/admin/departments/{department}`
-- `GET|POST /api/v1/admin/categories`
-- `GET|PUT|DELETE /api/v1/admin/categories/{category}`
-- `GET|POST /api/v1/admin/priorities`
-- `GET|PUT|DELETE /api/v1/admin/priorities/{priority}`
-- `GET|POST /api/v1/admin/sla-rules`
-- `GET|PUT|DELETE /api/v1/admin/sla-rules/{slaRule}`
-
-Admin endpoints require `Authorization: Bearer <admin_token>`. Use the Postman `Auth - Admin Login Flow` first, then run the `Admin - Departments`, `Admin - Categories`, `Admin - Priorities`, and `Admin - SLA Rules` folders. Public lookup folders do not require a token.
-
-Citizen complaint creation, tracking, and offline sync APIs are available under `/api/v1/citizen`. Employee processing, admin assignment, SLA management, notifications, admin reports, and rule-based complaint classification are available in the current API.
-
-## Citizen Complaint APIs
-
-Citizen complaint routes require `Authorization: Bearer <citizen_token>` and are protected by the `citizen` role.
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| GET | `/api/v1/citizen/complaints` | List the authenticated citizen complaints with filters and pagination |
-| POST | `/api/v1/citizen/complaints` | Create a complaint with optional location and attachments |
-| GET | `/api/v1/citizen/complaints/{complaint}` | Show one owned complaint with attachments and timeline |
-| POST | `/api/v1/citizen/complaints/{complaint}/attachments` | Add attachments to an owned complaint that is not closed or rejected |
-
-Create complaint JSON example:
-
-```json
-{
-  "title": "Street light is broken",
-  "description": "The street light near my house has been broken for three days.",
-  "department_id": 1,
-  "category_id": 1,
-  "priority_id": 2,
-  "latitude": 33.5138,
-  "longitude": 36.2765,
-  "address": "Damascus",
-  "source": "web"
-}
-```
-
-For attachments, send `multipart/form-data` to the same create endpoint and append each file as `attachments[]`. Allowed file types are `jpg`, `jpeg`, `png`, `pdf`, `doc`, and `docx`; each file can be up to 5120 KB. Files are stored on the `public` disk under `complaints/{complaint_id}`, so run this once locally if the storage link does not exist:
-
-```bash
-php artisan storage:link
-```
-
-Complaint numbers are generated automatically as `GCMS-YYYY-000001`, incrementing within the current year. New complaints default to `submitted`, and the API creates the first timeline record with `to_status=submitted` and note `Complaint submitted by citizen`.
-
-If `category_id` is provided without `department_id`, the department is inferred from the category. If both are provided, the category must belong to that department. If `priority_id` is omitted, the API uses the seeded `medium` priority when available.
-
-`due_at` is calculated from the first active SLA rule that matches, in this order: department + category + priority, then department + priority, then category + priority, then priority only. If no active SLA rule matches, `due_at` remains `null`.
-
-In Postman, import the local Mailtrap environment, run `01-auth` to set `citizen_token`, then use `04-citizen-complaints`. The JSON create request saves `complaint_id` and `complaint_number` for the show and attachment requests.
-
-## Complaint Assignment and Lifecycle
-
-The core complaint workflow is:
-
-1. A citizen creates a complaint through `/api/v1/citizen/complaints`.
-2. Admin users list and inspect complaints through `/api/v1/admin/complaints`.
-3. Admin users assign complaints to employees with `PATCH /api/v1/admin/complaints/{complaint}/assign`.
-4. Employees list accessible complaints through `/api/v1/employee/complaints`.
-5. Employees process assigned or department-accessible complaints by updating status.
-
-Status transitions are restricted:
-
-- `submitted` -> `under_review`, `rejected`
-- `under_review` -> `assigned`, `rejected`, `escalated`
-- `assigned` -> `in_progress`, `escalated`
-- `in_progress` -> `waiting_citizen`, `resolved`, `escalated`
-- `waiting_citizen` -> `in_progress`, `resolved`
-- `resolved` -> `closed`
-- `escalated` -> `assigned`, `in_progress`, `resolved`
-
-Admin assignment can move a `submitted` or `under_review` complaint to `assigned`. Employees cannot close or reject complaints; those actions remain admin-only when the lifecycle permits them.
-
-Every status update creates a `complaint_status_histories` timeline record with `from_status`, `to_status`, `changed_by`, `note`, and `duration_minutes`. `duration_minutes` is calculated from the last timeline event, or from complaint creation when no prior timeline event exists.
-
-The API sets lifecycle timestamps automatically:
-
-- `first_response_at`: first admin or employee workflow action.
-- `resolved_at`: first transition to `resolved`.
-- `closed_at`: first transition to `closed`.
-
-Admin users can also correct complaint department/category and priority. These changes create timeline records and recalculate `due_at` from active SLA rules when possible.
-
-Use these Postman collections for the workflow:
-
-- `docs/postman/collections/03-admin-management.postman_collection.json`
-- `docs/postman/collections/05-employee-complaints.postman_collection.json`
-
-## SLA and Notifications
-
-Complaint deadlines are calculated by `App\Services\Sla\SlaDeadlineService` from active SLA rules. The service uses `resolution_time_hours` and does not mark breaches. It runs when a complaint is created and when admin users change the complaint priority, department, or category.
-
-SLA matching priority:
-
-1. `department_id + category_id + priority_id`
-2. `department_id + priority_id`
-3. `category_id + priority_id`
-4. `priority_id` only
-
-Run the breach checker manually:
-
-```bash
-php artisan complaints:check-sla
-```
-
-The command checks overdue non-terminal complaints where `due_at < now()` and `is_sla_breached = false`. It marks the complaint as breached, escalates only statuses that can safely move to `escalated`, creates a system timeline record, and notifies the assigned employee plus all active admins. It is safe to run multiple times because breached complaints are skipped after the first run.
-
-For production scheduling, keep the server cron running Laravel's scheduler:
-
-```cron
-* * * * * php /path-to-project/artisan schedule:run >> /dev/null 2>&1
-```
-
-This Laravel 12 project schedules `complaints:check-sla` every 15 minutes in `bootstrap/app.php`.
-
-Supported notification types:
-
-- `complaint_created`
-- `complaint_assigned`
-- `complaint_status_updated`
-- `sla_breached`
-- `complaint_resolved`
-- `complaint_closed`
-
-Notification API endpoints require `Authorization: Bearer <token>` and always scope records to the authenticated user:
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| GET | `/api/v1/notifications` | List own notifications, with `unread=true`, `type`, and `per_page` filters |
-| GET | `/api/v1/notifications/unread-count` | Return own unread count |
-| PATCH | `/api/v1/notifications/{notification}/read` | Mark one owned notification as read |
-| PATCH | `/api/v1/notifications/read-all` | Mark all own notifications as read |
-| DELETE | `/api/v1/notifications/{notification}` | Delete one owned notification |
-
-Database notifications are the reliable channel. Mailtrap email is also sent for important complaint events: `complaint_assigned`, `sla_breached`, and `complaint_resolved`. Auth OTP and password reset emails remain separate from this service.
-
-Postman notification requests are in `docs/postman/collections/06-notifications.postman_collection.json`.
-
-## Push and SMS Notifications
-
-Database notifications remain the primary reliable notification channel. Complaint events also pass through a dispatcher that can send Mailtrap email, Firebase Cloud Messaging push notifications, and SMS notifications when user preferences and environment configuration allow it.
-
-Local defaults are safe:
-
-```env
-PUSH_NOTIFICATIONS_ENABLED=false
-SMS_NOTIFICATIONS_ENABLED=false
-SMS_PROVIDER=log
-QUEUE_CONNECTION=database
-```
-
-Do not commit Firebase, Twilio, or other provider credentials. Configure real credentials only in local or server `.env` files. `.env.example` documents the expected keys for FCM and Twilio.
-
-Notification infrastructure endpoints:
-
-| Method | Endpoint | Auth | Description |
-| --- | --- | --- | --- |
-| GET | `/api/v1/device-tokens` | Bearer token | List the authenticated user's active device tokens |
-| POST | `/api/v1/device-tokens` | Bearer token | Register or update one Firebase device token |
-| DELETE | `/api/v1/device-tokens/{deviceToken}` | Bearer token | Deactivate one owned device token |
-| GET | `/api/v1/notification-preferences` | Bearer token | Get own notification preferences, creating defaults if missing |
-| PATCH | `/api/v1/notification-preferences` | Bearer token | Update own email, push, SMS, and event preferences |
-| GET | `/api/v1/admin/notification-delivery-logs` | admin | List delivery logs with filters |
-| GET | `/api/v1/admin/notification-delivery-logs/{notificationDeliveryLog}` | admin | Show one delivery log |
-
-Device tokens come from frontend/mobile Firebase SDKs. Postman uses fake tokens only to test the API. The API does not expose raw device tokens in admin delivery logs.
-
-Notification preferences default to database/email/push enabled and SMS disabled. Users must opt in to SMS with `sms_enabled=true`. The API intentionally does not allow users to disable `database_enabled`, because database notifications are the dependable in-app record.
-
-Delivery logs record `database`, `email`, `push`, and `sms` channel outcomes as `sent`, `failed`, or `skipped`. Provider failures are logged and do not fail complaint creation, assignment, status updates, or SLA breach handling.
-
-External channels use queued jobs. Run a worker in development or production when `QUEUE_CONNECTION=database`:
-
-```bash
-php artisan queue:work
-```
-
-Mailtrap remains the development email provider for important complaint emails. Push uses Firebase Cloud Messaging configuration when enabled. SMS supports a safe `log` provider for development and a Twilio branch when credentials are configured.
-
-## Reports and Analytics
-
-Report APIs are admin-only and are intended to feed dashboard cards, tables, and charts. They return analytics data only; no frontend charts are generated by this backend.
-
-Admin report endpoints:
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| GET | `/api/v1/admin/reports/overview` | Totals, open/resolved/closed/rejected/escalated counts, SLA breach rate, response/resolution averages, and new complaint counters |
-| GET | `/api/v1/admin/reports/complaints-by-status` | Count and percentage for every complaint status |
-| GET | `/api/v1/admin/reports/complaints-by-department` | Department totals, open/resolved/closed counts, SLA breach rate, and average resolution time |
-| GET | `/api/v1/admin/reports/complaints-by-priority` | Priority totals sorted by level, open/resolved counts, and SLA breach rate |
-| GET | `/api/v1/admin/reports/sla-performance` | SLA totals, within-SLA count, breached count, breach rate, average breach delay, and department/priority breakdowns |
-| GET | `/api/v1/admin/reports/employee-performance` | Employee assignment totals, in-progress/resolved/closed counts, SLA metrics, response/resolution averages, and resolution rate |
-| GET | `/api/v1/admin/reports/complaint-trends` | Time-series rows grouped by `day`, `week`, or `month` for created, resolved, closed, and SLA breached complaints |
-| GET | `/api/v1/admin/reports/sla-breaches` | Paginated read-only list of breached or currently overdue complaints |
-| POST | `/api/v1/admin/reports/snapshots` | Store a generated report snapshot |
-| GET | `/api/v1/admin/reports/snapshots` | List stored report snapshots |
-| GET | `/api/v1/admin/reports/snapshots/{reportSnapshot}` | Show one report snapshot |
-
-Supported filters include `date_from`, `date_to`, `department_id`, `category_id`, `priority_id`, `status`, `assigned_employee_id`, `citizen_id`, `is_sla_breached`, `group_by`, and `per_page` where relevant. Date filters use `complaints.created_at` except trend event counts, where created/resolved/closed use their matching timestamps.
-
-SLA performance reports are read-only. They consider a complaint breached when `is_sla_breached = true`, or when `due_at < now()` and the status is not `resolved`, `closed`, or `rejected`. Report endpoints do not update complaint rows; use `php artisan complaints:check-sla` for mutation and notifications.
-
-Frontend dashboards can use these APIs directly for KPI cards, pie/bar distributions, SLA tables, employee performance tables, and line charts. The Postman collection is `docs/postman/collections/07-reports.postman_collection.json`.
-
-## Offline Complaint Sync
-
-Offline sync lets citizen mobile/web clients create complaints locally while internet access is weak or unavailable, then submit them when connectivity returns. The client must generate a stable `client_uuid` for each local complaint and reuse that same value on every retry.
-
-Endpoints:
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| POST | `/api/v1/citizen/offline/complaints/sync` | Sync one offline complaint with optional attachments |
-| GET | `/api/v1/citizen/offline/submissions` | List the authenticated citizen's offline submission records |
-| GET | `/api/v1/citizen/offline/submissions/{offlineSubmission}` | Show one owned offline submission |
-
-The backend uses `client_uuid` to prevent duplicate complaints. If the same citizen sends the same `client_uuid` after it has already synced, the API returns the existing complaint with message `Offline complaint was already synced.` and `meta.idempotent = true`.
-
-Offline sync reuses the normal complaint creation service, so it keeps the same behavior for category/department validation, default medium priority, complaint number generation, first timeline record creation, SLA due date calculation, attachments, and complaint-created notifications. Synced complaints use `source = offline_sync` and store `client_uuid` on the complaint.
-
-Attachments can be synced with `multipart/form-data` using `attachments[]`. Allowed files are `jpg`, `jpeg`, `png`, `pdf`, `doc`, and `docx`, up to 5120 KB each.
-
-The `offline_submissions` table stores the citizen, `client_uuid`, submitted payload, status (`pending`, `synced`, or `failed`), synced complaint id, error message, offline timestamp, and sync timestamp. Clients can safely retry failed or pending local submissions with the same `client_uuid`; the backend will either retry processing or return the already-synced complaint.
-
-Postman requests are in `docs/postman/collections/04-citizen-complaints.postman_collection.json` under `Citizen - Offline Sync`.
-
-## Intelligent Complaint Classification
-
-Intelligent complaint classification is a deterministic rule-based v1 that suggests department and category values from complaint title and description. It does not call external AI APIs, does not require a Python service, and can later be replaced by a Python or ML service behind the same API contract.
-
-Admins manage keyword rules. Each active rule has a keyword, weight, optional department, optional category, language, and notes. The classifier normalizes the complaint text, matches active keywords, adds rule weights to category and department candidates, and returns the highest scoring prediction.
-
-Confidence is calculated as:
+## Folder Structure
 
 ```text
-winning_score / total_matched_score * 100
+app/
+  Http/Controllers/Api/V1/
+  Http/Requests/Api/V1/
+  Http/Resources/Api/V1/
+  Services/
+database/
+  migrations/
+  seeders/
+  factories/
+docs/
+  api/
+  openapi/
+  performance/
+  postman/
+  security/
+tests/
+  Feature/
 ```
 
-The confidence value is rounded to two decimals. If no keyword matches, the API returns `department = null`, `category = null`, and `confidence = 0`.
+## Academic Scope
 
-When citizens create complaints, or when offline complaints are synced, the classifier runs automatically. If department or category is missing and confidence is at least 60, the API fills the missing values from the prediction. Explicit user-selected department/category values are never overwritten. The stored `classification_confidence` records the classifier result for auditing and future analytics.
-
-Classification endpoints:
-
-| Method | Endpoint | Auth | Description |
-| --- | --- | --- | --- |
-| POST | `/api/v1/classification/complaints/preview` | Bearer token | Preview the predicted department/category without creating a complaint |
-| GET | `/api/v1/admin/classification-rules` | admin | List rules with filters |
-| POST | `/api/v1/admin/classification-rules` | admin | Create a keyword rule |
-| GET | `/api/v1/admin/classification-rules/{classificationRule}` | admin | Show one rule |
-| PUT | `/api/v1/admin/classification-rules/{classificationRule}` | admin | Update one rule |
-| DELETE | `/api/v1/admin/classification-rules/{classificationRule}` | admin | Delete one rule |
-
-Frontend clients can call the preview endpoint before submit to show suggested department/category choices, then still send explicit values if the citizen chooses a different category. The Postman collection is `docs/postman/collections/08-classification.postman_collection.json`.
-
-## Development Commands
-
-```bash
-php artisan migrate:fresh --seed
-php artisan config:clear
-php artisan cache:clear
-php artisan storage:link
-php artisan complaints:check-sla
-php artisan queue:work
-php artisan test
-```
+This project demonstrates backend API design, authentication, RBAC, workflow management, SLA rules, notification infrastructure, reporting, offline sync, and deterministic classification. External paid AI APIs, frontend dashboards, real Firebase client integration, and real SMS credentials are intentionally outside this repository.

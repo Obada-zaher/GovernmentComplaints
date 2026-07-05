@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\Citizen\ComplaintController as CitizenComplaintC
 use App\Http\Controllers\Api\V1\Citizen\OfflineComplaintSyncController;
 use App\Http\Controllers\Api\V1\Classification\ComplaintClassificationController;
 use App\Http\Controllers\Api\V1\Employee\ComplaintController as EmployeeComplaintController;
+use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\LookupController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\NotificationPreferenceController;
@@ -21,6 +22,8 @@ use App\Http\Controllers\Api\V1\UserDeviceTokenController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
+    Route::get('health', HealthController::class);
+
     Route::prefix('lookups')->group(function (): void {
         Route::get('departments', [LookupController::class, 'departments'])->name('lookups.departments');
         Route::get('categories', [LookupController::class, 'categories'])->name('lookups.categories');

@@ -214,7 +214,7 @@ Admins can manage setup data with protected endpoints:
 
 Admin endpoints require `Authorization: Bearer <admin_token>`. Use the Postman `Auth - Admin Login Flow` first, then run the `Admin - Departments`, `Admin - Categories`, `Admin - Priorities`, and `Admin - SLA Rules` folders. Public lookup folders do not require a token.
 
-Citizen complaint creation and tracking APIs are available under `/api/v1/citizen/complaints`. Employee processing, admin assignment, SLA management, notifications, and admin reports are available in the current API. Offline sync and classification are separate modules.
+Citizen complaint creation, tracking, and offline sync APIs are available under `/api/v1/citizen`. Employee processing, admin assignment, SLA management, notifications, and admin reports are available in the current API. Classification is a separate module.
 
 ## Citizen Complaint APIs
 
@@ -369,6 +369,28 @@ Supported filters include `date_from`, `date_to`, `department_id`, `category_id`
 SLA performance reports are read-only. They consider a complaint breached when `is_sla_breached = true`, or when `due_at < now()` and the status is not `resolved`, `closed`, or `rejected`. Report endpoints do not update complaint rows; use `php artisan complaints:check-sla` for mutation and notifications.
 
 Frontend dashboards can use these APIs directly for KPI cards, pie/bar distributions, SLA tables, employee performance tables, and line charts. The Postman collection is `docs/postman/collections/07-reports.postman_collection.json`.
+
+## Offline Complaint Sync
+
+Offline sync lets citizen mobile/web clients create complaints locally while internet access is weak or unavailable, then submit them when connectivity returns. The client must generate a stable `client_uuid` for each local complaint and reuse that same value on every retry.
+
+Endpoints:
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| POST | `/api/v1/citizen/offline/complaints/sync` | Sync one offline complaint with optional attachments |
+| GET | `/api/v1/citizen/offline/submissions` | List the authenticated citizen's offline submission records |
+| GET | `/api/v1/citizen/offline/submissions/{offlineSubmission}` | Show one owned offline submission |
+
+The backend uses `client_uuid` to prevent duplicate complaints. If the same citizen sends the same `client_uuid` after it has already synced, the API returns the existing complaint with message `Offline complaint was already synced.` and `meta.idempotent = true`.
+
+Offline sync reuses the normal complaint creation service, so it keeps the same behavior for category/department validation, default medium priority, complaint number generation, first timeline record creation, SLA due date calculation, attachments, and complaint-created notifications. Synced complaints use `source = offline_sync` and store `client_uuid` on the complaint.
+
+Attachments can be synced with `multipart/form-data` using `attachments[]`. Allowed files are `jpg`, `jpeg`, `png`, `pdf`, `doc`, and `docx`, up to 5120 KB each.
+
+The `offline_submissions` table stores the citizen, `client_uuid`, submitted payload, status (`pending`, `synced`, or `failed`), synced complaint id, error message, offline timestamp, and sync timestamp. Clients can safely retry failed or pending local submissions with the same `client_uuid`; the backend will either retry processing or return the already-synced complaint.
+
+Postman requests are in `docs/postman/collections/04-citizen-complaints.postman_collection.json` under `Citizen - Offline Sync`.
 
 ## Development Commands
 

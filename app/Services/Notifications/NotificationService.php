@@ -5,7 +5,6 @@ namespace App\Services\Notifications;
 use App\Models\Complaint;
 use App\Models\User;
 use App\Models\UserNotification;
-use App\Notifications\Complaints\ComplaintEventNotification;
 use Illuminate\Support\Collection;
 
 class NotificationService
@@ -22,14 +21,7 @@ class NotificationService
 
     public const TYPE_COMPLAINT_CLOSED = 'complaint_closed';
 
-    /**
-     * @var array<int, string>
-     */
-    private array $emailTypes = [
-        self::TYPE_COMPLAINT_ASSIGNED,
-        self::TYPE_SLA_BREACHED,
-        self::TYPE_COMPLAINT_RESOLVED,
-    ];
+    public function __construct(private readonly NotificationDispatcherService $dispatcher) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -47,37 +39,7 @@ class NotificationService
             return null;
         }
 
-        $payload = array_merge($this->complaintData($complaint), $data);
-
-        if ($once && $complaint) {
-            $notification = UserNotification::query()->firstOrCreate(
-                [
-                    'user_id' => $user->id,
-                    'complaint_id' => $complaint->id,
-                    'type' => $type,
-                ],
-                [
-                    'title' => $title,
-                    'body' => $body,
-                    'data' => $payload,
-                ],
-            );
-        } else {
-            $notification = UserNotification::query()->create([
-                'user_id' => $user->id,
-                'complaint_id' => $complaint?->id,
-                'type' => $type,
-                'title' => $title,
-                'body' => $body,
-                'data' => $payload,
-            ]);
-        }
-
-        if ($notification->wasRecentlyCreated && in_array($type, $this->emailTypes, true)) {
-            $user->notify(new ComplaintEventNotification($complaint, $type, $title, $body));
-        }
-
-        return $notification;
+        return $this->dispatcher->dispatch($user, $type, $complaint, $title, $body, $data, $once);
     }
 
     /**
@@ -157,22 +119,5 @@ class NotificationService
             ->get();
 
         return $this->notifyUsers($employees, $type, $complaint, $title, $body, $data, $once);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function complaintData(?Complaint $complaint): array
-    {
-        if (! $complaint) {
-            return [];
-        }
-
-        return [
-            'complaint_id' => $complaint->id,
-            'complaint_number' => $complaint->complaint_number,
-            'status' => $complaint->status,
-            'url_hint' => "/complaints/{$complaint->id}",
-        ];
     }
 }

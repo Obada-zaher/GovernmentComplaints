@@ -1,369 +1,712 @@
 {
-    "info":  {
-                 "_postman_id":  "43732807-1386-4155-b174-6753f1125b1f",
-                 "name":  "04 - Citizen Complaints",
-                 "description":  "Citizen-only complaint creation and tracking APIs.",
-                 "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-             },
-    "item":  [
-                 {
-                     "name":  "List My Complaints",
-                     "request":  {
-                                     "method":  "GET",
-                                     "header":  [
-                                                    {
-                                                        "key":  "Accept",
-                                                        "value":  "application/json"
-                                                    }
-                                                ],
-                                     "url":  {
-                                                 "raw":  "{{base_url}}/citizen/complaints",
-                                                 "host":  [
-                                                              "{{base_url}}"
-                                                          ],
-                                                 "path":  [
-                                                              "citizen",
-                                                              "complaints"
-                                                          ]
-                                             },
-                                     "description":  "Purpose: list only authenticated citizen complaints. Required token: citizen_token. Supports status, department_id, category_id, priority_id, date_from, date_to, search, per_page.",
-                                     "auth":  {
-                                                  "type":  "bearer",
-                                                  "bearer":  [
-                                                                 {
-                                                                     "key":  "token",
-                                                                     "value":  "{{citizen_token}}",
-                                                                     "type":  "string"
-                                                                 }
-                                                             ]
-                                              }
-                                 },
-                     "response":  [
-
-                                  ],
-                     "event":  [
-                                   {
-                                       "listen":  "test",
-                                       "script":  {
-                                                      "type":  "text/javascript",
-                                                      "exec":  [
-                                                                   "pm.test(\u0027success key exists\u0027, function () { const json = pm.response.json(); pm.expect(json).to.have.property(\u0027success\u0027); });"
-                                                               ]
-                                                  }
-                                   }
-                               ]
-                 },
-                 {
-                     "name":  "Create Complaint - JSON",
-                     "request":  {
-                                     "method":  "POST",
-                                     "header":  [
-                                                    {
-                                                        "key":  "Accept",
-                                                        "value":  "application/json"
-                                                    },
-                                                    {
-                                                        "key":  "Content-Type",
-                                                        "value":  "application/json"
-                                                    }
-                                                ],
-                                     "url":  {
-                                                 "raw":  "{{base_url}}/citizen/complaints",
-                                                 "host":  [
-                                                              "{{base_url}}"
-                                                          ],
-                                                 "path":  [
-                                                              "citizen",
-                                                              "complaints"
-                                                          ]
-                                             },
-                                     "description":  "Purpose: create complaint from JSON. Required token: citizen_token. Saves complaint_id and complaint_number. Employee processing and admin assignment are not part of this endpoint.",
-                                     "auth":  {
-                                                  "type":  "bearer",
-                                                  "bearer":  [
-                                                                 {
-                                                                     "key":  "token",
-                                                                     "value":  "{{citizen_token}}",
-                                                                     "type":  "string"
-                                                                 }
-                                                             ]
-                                              },
-                                     "body":  {
-                                                  "mode":  "raw",
-                                                  "raw":  "{\n  \"title\": \"Street light is broken\",\n  \"description\": \"The street light near my house has been broken for three days.\",\n  \"department_id\": \"{{department_id}}\",\n  \"category_id\": \"{{category_id}}\",\n  \"priority_id\": \"{{priority_id}}\",\n  \"latitude\": 33.5138,\n  \"longitude\": 36.2765,\n  \"address\": \"Damascus\",\n  \"source\": \"web\"\n}",
-                                                  "options":  {
-                                                                  "raw":  {
-                                                                              "language":  "json"
-                                                                          }
-                                                              }
-                                              }
-                                 },
-                     "response":  [
-
-                                  ],
-                     "event":  [
-                                   {
-                                       "listen":  "test",
-                                       "script":  {
-                                                      "type":  "text/javascript",
-                                                      "exec":  [
-                                                                   "pm.test(\u0027success key exists\u0027, function () { const json = pm.response.json(); pm.expect(json).to.have.property(\u0027success\u0027); });",
-                                                                   "const json = pm.response.json(); if (json.data) { pm.environment.set(\u0027complaint_id\u0027, json.data.id); pm.environment.set(\u0027complaint_number\u0027, json.data.complaint_number); }"
-                                                               ]
-                                                  }
-                                   }
-                               ]
-                 },
-                 {
-                     "name":  "Create Complaint - Multipart With Attachment",
-                     "request":  {
-                                     "auth":  {
-                                                  "type":  "bearer",
-                                                  "bearer":  [
-                                                                 {
-                                                                     "key":  "token",
-                                                                     "value":  "{{citizen_token}}",
-                                                                     "type":  "string"
-                                                                 }
-                                                             ]
-                                              },
-                                     "method":  "POST",
-                                     "header":  [
-                                                    {
-                                                        "key":  "Accept",
-                                                        "value":  "application/json"
-                                                    }
-                                                ],
-                                     "body":  {
-                                                  "mode":  "formdata",
-                                                  "formdata":  [
-                                                                   {
-                                                                       "key":  "title",
-                                                                       "value":  "Street light is broken",
-                                                                       "type":  "text"
-                                                                   },
-                                                                   {
-                                                                       "key":  "description",
-                                                                       "value":  "The street light near my house has been broken for three days.",
-                                                                       "type":  "text"
-                                                                   },
-                                                                   {
-                                                                       "key":  "department_id",
-                                                                       "value":  "{{department_id}}",
-                                                                       "type":  "text"
-                                                                   },
-                                                                   {
-                                                                       "key":  "category_id",
-                                                                       "value":  "{{category_id}}",
-                                                                       "type":  "text"
-                                                                   },
-                                                                   {
-                                                                       "key":  "priority_id",
-                                                                       "value":  "{{priority_id}}",
-                                                                       "type":  "text"
-                                                                   },
-                                                                   {
-                                                                       "key":  "latitude",
-                                                                       "value":  "33.5138",
-                                                                       "type":  "text"
-                                                                   },
-                                                                   {
-                                                                       "key":  "longitude",
-                                                                       "value":  "36.2765",
-                                                                       "type":  "text"
-                                                                   },
-                                                                   {
-                                                                       "key":  "address",
-                                                                       "value":  "Damascus",
-                                                                       "type":  "text"
-                                                                   },
-                                                                   {
-                                                                       "key":  "source",
-                                                                       "value":  "web",
-                                                                       "type":  "text"
-                                                                   },
-                                                                   {
-                                                                       "key":  "attachments[]",
-                                                                       "type":  "file",
-                                                                       "src":  [
-
-                                                                               ]
-                                                                   }
-                                                               ]
-                                              },
-                                     "url":  {
-                                                 "raw":  "{{base_url}}/citizen/complaints",
-                                                 "host":  [
-                                                              "{{base_url}}"
-                                                          ],
-                                                 "path":  [
-                                                              "citizen",
-                                                              "complaints"
-                                                          ]
-                                             },
-                                     "description":  "Purpose: create complaint with attachments. Required token: citizen_token. Frontend should send multipart/form-data and append each file as attachments[]. Allowed: jpg, jpeg, png, pdf, doc, docx up to 5120 KB each."
-                                 },
-                     "response":  [
-
-                                  ]
-                 },
-                 {
-                     "name":  "Show My Complaint",
-                     "request":  {
-                                     "method":  "GET",
-                                     "header":  [
-                                                    {
-                                                        "key":  "Accept",
-                                                        "value":  "application/json"
-                                                    }
-                                                ],
-                                     "url":  {
-                                                 "raw":  "{{base_url}}/citizen/complaints/{{complaint_id}}",
-                                                 "host":  [
-                                                              "{{base_url}}"
-                                                          ],
-                                                 "path":  [
-                                                              "citizen",
-                                                              "complaints",
-                                                              "{{complaint_id}}"
-                                                          ]
-                                             },
-                                     "description":  "Purpose: show owned complaint with relationships, attachments, and timeline. Required token: citizen_token. Required variable: complaint_id.",
-                                     "auth":  {
-                                                  "type":  "bearer",
-                                                  "bearer":  [
-                                                                 {
-                                                                     "key":  "token",
-                                                                     "value":  "{{citizen_token}}",
-                                                                     "type":  "string"
-                                                                 }
-                                                             ]
-                                              }
-                                 },
-                     "response":  [
-
-                                  ],
-                     "event":  [
-                                   {
-                                       "listen":  "test",
-                                       "script":  {
-                                                      "type":  "text/javascript",
-                                                      "exec":  [
-                                                                   "pm.test(\u0027success key exists\u0027, function () { const json = pm.response.json(); pm.expect(json).to.have.property(\u0027success\u0027); });"
-                                                               ]
-                                                  }
-                                   }
-                               ]
-                 },
-                 {
-                     "name":  "Add Complaint Attachment",
-                     "request":  {
-                                     "auth":  {
-                                                  "type":  "bearer",
-                                                  "bearer":  [
-                                                                 {
-                                                                     "key":  "token",
-                                                                     "value":  "{{citizen_token}}",
-                                                                     "type":  "string"
-                                                                 }
-                                                             ]
-                                              },
-                                     "method":  "POST",
-                                     "header":  [
-                                                    {
-                                                        "key":  "Accept",
-                                                        "value":  "application/json"
-                                                    }
-                                                ],
-                                     "body":  {
-                                                  "mode":  "formdata",
-                                                  "formdata":  [
-                                                                   {
-                                                                       "key":  "attachments[]",
-                                                                       "type":  "file",
-                                                                       "src":  [
-
-                                                                               ]
-                                                                   }
-                                                               ]
-                                              },
-                                     "url":  {
-                                                 "raw":  "{{base_url}}/citizen/complaints/{{complaint_id}}/attachments",
-                                                 "host":  [
-                                                              "{{base_url}}"
-                                                          ],
-                                                 "path":  [
-                                                              "citizen",
-                                                              "complaints",
-                                                              "{{complaint_id}}",
-                                                              "attachments"
-                                                          ]
-                                             },
-                                     "description":  "Purpose: add attachments to an owned complaint. Required token: citizen_token. Rejected when complaint status is closed or rejected."
-                                 },
-                     "response":  [
-
-                                  ]
-                 },
-                 {
-                     "name":  "Forbidden Test - Employee Cannot Create Citizen Complaint",
-                     "request":  {
-                                     "method":  "POST",
-                                     "header":  [
-                                                    {
-                                                        "key":  "Accept",
-                                                        "value":  "application/json"
-                                                    },
-                                                    {
-                                                        "key":  "Content-Type",
-                                                        "value":  "application/json"
-                                                    }
-                                                ],
-                                     "url":  {
-                                                 "raw":  "{{base_url}}/citizen/complaints",
-                                                 "host":  [
-                                                              "{{base_url}}"
-                                                          ],
-                                                 "path":  [
-                                                              "citizen",
-                                                              "complaints"
-                                                          ]
-                                             },
-                                     "description":  "Purpose: RBAC negative test. Required token: employee_token. Expected response: 403 success=false.",
-                                     "auth":  {
-                                                  "type":  "bearer",
-                                                  "bearer":  [
-                                                                 {
-                                                                     "key":  "token",
-                                                                     "value":  "{{employee_token}}",
-                                                                     "type":  "string"
-                                                                 }
-                                                             ]
-                                              },
-                                     "body":  {
-                                                  "mode":  "raw",
-                                                  "raw":  "{\n  \"title\": \"Employee should be forbidden\",\n  \"description\": \"Employees cannot create complaints through citizen route.\"\n}",
-                                                  "options":  {
-                                                                  "raw":  {
-                                                                              "language":  "json"
-                                                                          }
-                                                              }
-                                              }
-                                 },
-                     "response":  [
-
-                                  ],
-                     "event":  [
-                                   {
-                                       "listen":  "test",
-                                       "script":  {
-                                                      "type":  "text/javascript",
-                                                      "exec":  [
-                                                                   "pm.test(\u0027status is 403\u0027, function () { pm.response.to.have.status(403); });"
-                                                               ]
-                                                  }
-                                   }
-                               ]
-                 }
-             ]
+  "info": {
+    "_postman_id": "43732807-1386-4155-b174-6753f1125b1f",
+    "name": "04 - Citizen Complaints",
+    "description": "Citizen-only complaint creation, tracking, attachments, and offline sync APIs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "List My Complaints",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/citizen/complaints",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "citizen",
+            "complaints"
+          ]
+        },
+        "description": "Purpose: list only authenticated citizen complaints. Required token: citizen_token. Supports status, department_id, category_id, priority_id, date_from, date_to, search, per_page.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{citizen_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('success key exists', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create Complaint - JSON",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/citizen/complaints",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "citizen",
+            "complaints"
+          ]
+        },
+        "description": "Purpose: create complaint from JSON. Required token: citizen_token. Saves complaint_id and complaint_number. Employee processing and admin assignment are not part of this endpoint.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{citizen_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Street light is broken\",\n  \"description\": \"The street light near my house has been broken for three days.\",\n  \"department_id\": \"{{department_id}}\",\n  \"category_id\": \"{{category_id}}\",\n  \"priority_id\": \"{{priority_id}}\",\n  \"latitude\": 33.5138,\n  \"longitude\": 36.2765,\n  \"address\": \"Damascus\",\n  \"source\": \"web\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('success key exists', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+              "const json = pm.response.json(); if (json.data) { pm.environment.set('complaint_id', json.data.id); pm.environment.set('complaint_number', json.data.complaint_number); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create Complaint - Multipart With Attachment",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{citizen_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "title",
+              "value": "Street light is broken",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "The street light near my house has been broken for three days.",
+              "type": "text"
+            },
+            {
+              "key": "department_id",
+              "value": "{{department_id}}",
+              "type": "text"
+            },
+            {
+              "key": "category_id",
+              "value": "{{category_id}}",
+              "type": "text"
+            },
+            {
+              "key": "priority_id",
+              "value": "{{priority_id}}",
+              "type": "text"
+            },
+            {
+              "key": "latitude",
+              "value": "33.5138",
+              "type": "text"
+            },
+            {
+              "key": "longitude",
+              "value": "36.2765",
+              "type": "text"
+            },
+            {
+              "key": "address",
+              "value": "Damascus",
+              "type": "text"
+            },
+            {
+              "key": "source",
+              "value": "web",
+              "type": "text"
+            },
+            {
+              "key": "attachments[]",
+              "type": "file",
+              "src": []
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/citizen/complaints",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "citizen",
+            "complaints"
+          ]
+        },
+        "description": "Purpose: create complaint with attachments. Required token: citizen_token. Frontend should send multipart/form-data and append each file as attachments[]. Allowed: jpg, jpeg, png, pdf, doc, docx up to 5120 KB each."
+      },
+      "response": []
+    },
+    {
+      "name": "Show My Complaint",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/citizen/complaints/{{complaint_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "citizen",
+            "complaints",
+            "{{complaint_id}}"
+          ]
+        },
+        "description": "Purpose: show owned complaint with relationships, attachments, and timeline. Required token: citizen_token. Required variable: complaint_id.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{citizen_token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('success key exists', function () { const json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Add Complaint Attachment",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{citizen_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "attachments[]",
+              "type": "file",
+              "src": []
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/citizen/complaints/{{complaint_id}}/attachments",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "citizen",
+            "complaints",
+            "{{complaint_id}}",
+            "attachments"
+          ]
+        },
+        "description": "Purpose: add attachments to an owned complaint. Required token: citizen_token. Rejected when complaint status is closed or rejected."
+      },
+      "response": []
+    },
+    {
+      "name": "Citizen - Offline Sync",
+      "description": "Offline sync is for citizen clients that create complaints locally while disconnected. The client must generate and persist a stable client_uuid for each local complaint. Retrying with the same client_uuid returns the same synced complaint and prevents duplicate backend complaints.",
+      "item": [
+        {
+          "name": "Sync Offline Complaint - JSON",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{citizen_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_uuid\": \"{{offline_client_uuid}}\",\n  \"title\": \"Offline complaint from mobile\",\n  \"description\": \"This complaint was created while the user was offline.\",\n  \"department_id\": \"{{department_id}}\",\n  \"category_id\": \"{{category_id}}\",\n  \"priority_id\": \"{{priority_id}}\",\n  \"latitude\": 33.5138,\n  \"longitude\": 36.2765,\n  \"address\": \"Damascus\",\n  \"created_offline_at\": \"2026-07-05T10:00:00Z\",\n  \"source\": \"offline_sync\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/citizen/offline/complaints/sync",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "citizen",
+                "offline",
+                "complaints",
+                "sync"
+              ]
+            },
+            "description": "Purpose: sync one locally-created offline complaint. Required role: citizen. Required token: citizen_token. client_uuid is the idempotency key; mobile/web clients should generate it once locally and reuse it for retries. Expected response: synced complaint and offline_submission tracking record."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('offline_client_uuid', 'offline-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                  "pm.test('success is true', function () { pm.expect(pm.response.json()).to.have.property('success', true); });",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.complaint) {",
+                  "  pm.environment.set('complaint_id', json.data.complaint.id);",
+                  "  pm.environment.set('complaint_number', json.data.complaint.complaint_number);",
+                  "}",
+                  "if (json.data && json.data.offline_submission) { pm.environment.set('offline_submission_id', json.data.offline_submission.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sync Same Offline Complaint Again - Idempotency Test",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{citizen_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_uuid\": \"{{offline_client_uuid}}\",\n  \"title\": \"Offline complaint from mobile\",\n  \"description\": \"This complaint was created while the user was offline.\",\n  \"department_id\": \"{{department_id}}\",\n  \"category_id\": \"{{category_id}}\",\n  \"priority_id\": \"{{priority_id}}\",\n  \"latitude\": 33.5138,\n  \"longitude\": 36.2765,\n  \"address\": \"Damascus\",\n  \"created_offline_at\": \"2026-07-05T10:00:00Z\",\n  \"source\": \"offline_sync\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/citizen/offline/complaints/sync",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "citizen",
+                "offline",
+                "complaints",
+                "sync"
+              ]
+            },
+            "description": "Purpose: verify retry idempotency with the same client_uuid. Required role: citizen. Required token: citizen_token. Expected response: success true, meta.idempotent true, and the same complaint returned instead of a duplicate."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('success is true', function () { pm.expect(pm.response.json()).to.have.property('success', true); });",
+                  "pm.test('idempotent response', function () { pm.expect(pm.response.json().meta).to.have.property('idempotent', true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sync Offline Complaint - Multipart With Attachment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{citizen_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "client_uuid",
+                  "value": "offline-file-{{$timestamp}}",
+                  "type": "text"
+                },
+                {
+                  "key": "title",
+                  "value": "Offline complaint with attachment",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "This complaint includes evidence captured offline.",
+                  "type": "text"
+                },
+                {
+                  "key": "department_id",
+                  "value": "{{department_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "category_id",
+                  "value": "{{category_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "priority_id",
+                  "value": "{{priority_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "latitude",
+                  "value": "33.5138",
+                  "type": "text"
+                },
+                {
+                  "key": "longitude",
+                  "value": "36.2765",
+                  "type": "text"
+                },
+                {
+                  "key": "address",
+                  "value": "Damascus",
+                  "type": "text"
+                },
+                {
+                  "key": "created_offline_at",
+                  "value": "2026-07-05T10:00:00Z",
+                  "type": "text"
+                },
+                {
+                  "key": "source",
+                  "value": "offline_sync",
+                  "type": "text"
+                },
+                {
+                  "key": "attachments[]",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/citizen/offline/complaints/sync",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "citizen",
+                "offline",
+                "complaints",
+                "sync"
+              ]
+            },
+            "description": "Purpose: sync one offline complaint with evidence files. Required role: citizen. Required token: citizen_token. client_uuid prevents duplicate complaints if the upload is retried. Attachments use attachments[] and allowed mimes are jpg, jpeg, png, pdf, doc, and docx up to 5120 KB."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                  "pm.test('success is true', function () { pm.expect(pm.response.json()).to.have.property('success', true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Offline Submissions",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{citizen_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/citizen/offline/submissions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "citizen",
+                "offline",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "synced",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Purpose: list the authenticated citizen's offline submission tracking records. Required role: citizen. Required token: citizen_token. Useful filters: status, date_from, date_to, per_page. Clients can use this to reconcile local sync state."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('success key exists', function () { pm.expect(pm.response.json()).to.have.property('success'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Show Offline Submission",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{citizen_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/citizen/offline/submissions/{{offline_submission_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "citizen",
+                "offline",
+                "submissions",
+                "{{offline_submission_id}}"
+              ]
+            },
+            "description": "Purpose: show one owned offline submission and its synced complaint. Required role: citizen. Required token: citizen_token. The endpoint returns 403 if the submission belongs to another citizen."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('success key exists', function () { pm.expect(pm.response.json()).to.have.property('success'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Forbidden Test - Employee Cannot Create Citizen Complaint",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/citizen/complaints",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "citizen",
+            "complaints"
+          ]
+        },
+        "description": "Purpose: RBAC negative test. Required token: employee_token. Expected response: 403 success=false.",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{employee_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Employee should be forbidden\",\n  \"description\": \"Employees cannot create complaints through citizen route.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 403', function () { pm.response.to.have.status(403); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
 }

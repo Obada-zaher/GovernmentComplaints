@@ -24,6 +24,7 @@ class ComplaintResource extends JsonResource
             'longitude' => $this->longitude,
             'address' => $this->address,
             'source' => $this->source,
+            'client_uuid' => $this->client_uuid,
             'classification_confidence' => $this->classification_confidence,
             'due_at' => $this->due_at?->toISOString(),
             'first_response_at' => $this->first_response_at?->toISOString(),

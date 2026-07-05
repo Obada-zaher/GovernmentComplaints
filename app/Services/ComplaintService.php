@@ -44,6 +44,7 @@ class ComplaintService
                 'longitude' => $data['longitude'] ?? null,
                 'address' => $data['address'] ?? null,
                 'source' => $data['source'] ?? 'web',
+                'client_uuid' => $data['client_uuid'] ?? null,
                 'due_at' => $this->slaDeadlineService->calculate($departmentId, $category?->id, $priorityId),
             ]);
 

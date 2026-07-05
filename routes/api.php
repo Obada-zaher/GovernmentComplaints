@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\Admin\ReportController;
 use App\Http\Controllers\Api\V1\Admin\SlaRuleController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\Citizen\ComplaintController as CitizenComplaintController;
+use App\Http\Controllers\Api\V1\Citizen\OfflineComplaintSyncController;
 use App\Http\Controllers\Api\V1\Employee\ComplaintController as EmployeeComplaintController;
 use App\Http\Controllers\Api\V1\LookupController;
 use App\Http\Controllers\Api\V1\NotificationController;
@@ -56,6 +57,9 @@ Route::prefix('v1')->group(function (): void {
             Route::post('complaints', [CitizenComplaintController::class, 'store']);
             Route::get('complaints/{complaint}', [CitizenComplaintController::class, 'show']);
             Route::post('complaints/{complaint}/attachments', [CitizenComplaintController::class, 'addAttachments']);
+            Route::post('offline/complaints/sync', [OfflineComplaintSyncController::class, 'sync']);
+            Route::get('offline/submissions', [OfflineComplaintSyncController::class, 'index']);
+            Route::get('offline/submissions/{offlineSubmission}', [OfflineComplaintSyncController::class, 'show']);
         });
 
     Route::prefix('employee')

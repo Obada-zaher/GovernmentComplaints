@@ -38,6 +38,21 @@ Notification recipients:
 - Assigned employees receive assignment and SLA breach notifications.
 - Active admins receive new complaint, employee escalation, and SLA breach notifications.
 
+## Reports Flow
+
+1. Use `01-auth` to log in as admin and save `admin_token`.
+2. Create sample complaints with `04-citizen-complaints`.
+3. Assign and process complaints with `03-admin-management` and `05-employee-complaints`.
+4. Run the SLA checker if you need breached complaint data:
+
+```bash
+php artisan complaints:check-sla
+```
+
+5. Open `07-reports` and run overview, distribution, SLA, employee, trend, and snapshot requests.
+
+Reports are admin-only and return backend analytics data for dashboard cards, tables, and charts. They do not create frontend charts.
+
 ## Mailtrap OTP Flow
 
 Register, login, resend OTP, and forgot password requests send email through Mailtrap.
@@ -64,12 +79,12 @@ OTP codes and reset tokens are never returned by the API response.
 - `04-citizen-complaints.postman_collection.json`: citizen web/mobile complaint creation and tracking.
 - `05-employee-complaints.postman_collection.json`: employee-accessible complaint list, show, and status processing.
 - `06-notifications.postman_collection.json`: authenticated notification list, unread count, mark read, read all, and delete requests.
-- `07-reports.postman_collection.json`: placeholder; report APIs are not implemented yet.
+- `07-reports.postman_collection.json`: admin-only overview, distribution, SLA, employee performance, trends, and report snapshot requests.
 
 ## Team Usage
 
 - Frontend auth team: use `01-auth`.
-- Admin dashboard team: use `03-admin-management`.
+- Admin dashboard team: use `03-admin-management`, `06-notifications`, and `07-reports`.
 - Citizen web/mobile team: use `04-citizen-complaints`.
 - Employee dashboard team: use `05-employee-complaints`.
 
@@ -77,4 +92,4 @@ OTP codes and reset tokens are never returned by the API response.
 
 Do not commit real tokens, OTPs, reset tokens, Mailtrap credentials, or production secrets.
 
-Before committing exported environments, reset sensitive values such as `citizen_token`, `admin_token`, `employee_token`, `citizen_otp`, `admin_otp`, `employee_otp`, and `reset_token`. Also reset workflow variables such as `notification_id` if they came from a local run.
+Before committing exported environments, reset sensitive values such as `citizen_token`, `admin_token`, `employee_token`, `citizen_otp`, `admin_otp`, `employee_otp`, and `reset_token`. Also reset workflow variables such as `notification_id` and `snapshot_id` if they came from a local run.

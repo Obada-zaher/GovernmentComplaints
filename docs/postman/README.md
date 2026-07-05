@@ -6,9 +6,22 @@ Postman files are split by module so each team can import only what it needs.
 
 1. Import `environments/gcms-local-mailtrap.postman_environment.json`.
 2. Select `GCMS Local Mailtrap Environment`.
-3. Import `collections/01-auth.postman_collection.json`.
-4. Register or log in, then verify the OTP from Mailtrap to get a token.
-5. Import the module collections needed for your work.
+3. Import `collections/00-health.postman_collection.json` and run `API Health`.
+4. Import `collections/01-auth.postman_collection.json`.
+5. Register or log in, then verify the OTP from Mailtrap to get a token.
+6. Import the module collections needed for your work.
+
+## Recommended Demo Flow
+
+1. Run `00-health / API Health`.
+2. Use `01-auth` to log in as admin, employee, and citizen.
+3. Use `02-lookups` to load departments, categories, priorities, and statuses.
+4. Use `08-classification` to preview complaint classification.
+5. Use `04-citizen-complaints` to create a complaint.
+6. Use `03-admin-management` to assign or update the complaint.
+7. Use `05-employee-complaints` to process the complaint lifecycle.
+8. Use `06-notifications` to inspect notifications, preferences, device tokens, and delivery logs.
+9. Use `07-reports` to show dashboard analytics.
 
 ## Complaint Workflow Demo Order
 
@@ -110,7 +123,7 @@ OTP codes and reset tokens are never returned by the API response.
 
 ## Collections
 
-- `00-health.postman_collection.json`: basic application health check.
+- `00-health.postman_collection.json`: public `/api/v1/health` API health check.
 - `01-auth.postman_collection.json`: auth, OTP, password recovery, password changes, logout, and security tests.
 - `02-lookups.postman_collection.json`: public lookup endpoints for frontend dropdowns.
 - `03-admin-management.postman_collection.json`: admin dashboard setup APIs.
@@ -123,6 +136,7 @@ OTP codes and reset tokens are never returned by the API response.
 ## Team Usage
 
 - Frontend auth team: use `01-auth`.
+- Shared setup/testing: use `00-health` and `02-lookups`.
 - Admin dashboard team: use `03-admin-management`, `06-notifications`, `07-reports`, and `08-classification`.
 - Citizen web/mobile team: use `04-citizen-complaints` and the preview folder in `08-classification`.
 - Employee dashboard team: use `05-employee-complaints`.

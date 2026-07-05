@@ -1,0 +1,103 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gcms-app
+    working_dir: /var/www/html
+    ports:
+      - "8000:8000"
+    command: sh -c "composer install --no-interaction --prefer-dist --no-progress && { [ -f .env ] || cp .env.example .env; } && php artisan serve --host=0.0.0.0 --port=8000"
+    volumes:
+      - ./:/var/www/html
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: government_complaints
+      DB_USERNAME: gcms
+      DB_PASSWORD: gcms
+      QUEUE_CONNECTION: database
+      CACHE_STORE: database
+      SESSION_DRIVER: database
+      MAIL_MAILER: log
+      PUSH_NOTIFICATIONS_ENABLED: "false"
+      SMS_NOTIFICATIONS_ENABLED: "false"
+      SMS_PROVIDER: log
+    depends_on:
+      - mysql
+      - redis
+
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gcms-queue
+    working_dir: /var/www/html
+    command: sh -c "while [ ! -f vendor/autoload.php ]; do sleep 5; done; php artisan queue:work --tries=3 --timeout=90"
+    volumes:
+      - ./:/var/www/html
+    environment:
+      APP_ENV: local
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_DATABASE: government_complaints
+      DB_USERNAME: gcms
+      DB_PASSWORD: gcms
+      QUEUE_CONNECTION: database
+      MAIL_MAILER: log
+    depends_on:
+      - app
+      - mysql
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gcms-scheduler
+    working_dir: /var/www/html
+    command: sh -c "while [ ! -f vendor/autoload.php ]; do sleep 5; done; while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
+    volumes:
+      - ./:/var/www/html
+    environment:
+      APP_ENV: local
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_DATABASE: government_complaints
+      DB_USERNAME: gcms
+      DB_PASSWORD: gcms
+      QUEUE_CONNECTION: database
+      MAIL_MAILER: log
+    depends_on:
+      - app
+      - mysql
+
+  mysql:
+    image: mysql:8.0
+    container_name: gcms-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: government_complaints
+      MYSQL_USER: gcms
+      MYSQL_PASSWORD: gcms
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: gcms-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  mysql-data:

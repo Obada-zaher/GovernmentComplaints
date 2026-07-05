@@ -1,0 +1,73 @@
+name: Laravel Tests
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: government_complaints_test
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      APP_ENV: testing
+      APP_DEBUG: false
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: government_complaints_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      MAIL_MAILER: log
+      QUEUE_CONNECTION: sync
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      PUSH_NOTIFICATIONS_ENABLED: false
+      SMS_NOTIFICATIONS_ENABLED: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, pdo_mysql, bcmath, gd, zip
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run migrations
+        run: php artisan migrate --force
+
+      - name: Create storage link
+        run: php artisan storage:link
+
+      - name: Run tests
+        run: php artisan test

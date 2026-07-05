@@ -1,0 +1,165 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Government Complaint Management System API",
+    "version": "1.0.0",
+    "description": "Laravel REST API for the Government Complaint Management System. See gcms-api.openapi.yaml for detailed operation notes and examples."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8000/api/v1",
+      "description": "Local Laravel server"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    { "name": "Health" },
+    { "name": "Auth" },
+    { "name": "Lookups" },
+    { "name": "Citizen Complaints" },
+    { "name": "Admin Management" },
+    { "name": "Employee Complaints" },
+    { "name": "Notifications" },
+    { "name": "Reports" },
+    { "name": "Classification" }
+  ],
+  "paths": {
+    "/health": { "get": { "tags": ["Health"], "security": [], "summary": "Public system health check", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/auth/register": { "post": { "tags": ["Auth"], "security": [], "summary": "Register a citizen and send OTP", "responses": { "201": { "$ref": "#/components/responses/Success" }, "422": { "$ref": "#/components/responses/ValidationError" } } } },
+    "/auth/login": { "post": { "tags": ["Auth"], "security": [], "summary": "Login and send OTP", "responses": { "200": { "$ref": "#/components/responses/Success" }, "401": { "$ref": "#/components/responses/Error" } } } },
+    "/auth/verify-otp": { "post": { "tags": ["Auth"], "security": [], "summary": "Verify OTP and issue token", "responses": { "200": { "$ref": "#/components/responses/Success" }, "422": { "$ref": "#/components/responses/ValidationError" } } } },
+    "/auth/resend-otp": { "post": { "tags": ["Auth"], "security": [], "summary": "Resend OTP", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/auth/forgot-password": { "post": { "tags": ["Auth"], "security": [], "summary": "Send password reset email", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/auth/reset-password": { "post": { "tags": ["Auth"], "security": [], "summary": "Reset password", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/auth/me": { "get": { "tags": ["Auth"], "summary": "Current user", "responses": { "200": { "$ref": "#/components/responses/Success" }, "401": { "$ref": "#/components/responses/Error" } } } },
+    "/auth/change-password": { "post": { "tags": ["Auth"], "summary": "Change password", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/auth/logout": { "post": { "tags": ["Auth"], "summary": "Logout current token", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/auth/logout-all": { "post": { "tags": ["Auth"], "summary": "Logout all tokens", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/lookups/departments": { "get": { "tags": ["Lookups"], "security": [], "summary": "Departments lookup", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/lookups/categories": { "get": { "tags": ["Lookups"], "security": [], "summary": "Categories lookup", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/lookups/priorities": { "get": { "tags": ["Lookups"], "security": [], "summary": "Priorities lookup", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/lookups/complaint-statuses": { "get": { "tags": ["Lookups"], "security": [], "summary": "Complaint statuses lookup", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/citizen/complaints": { "get": { "tags": ["Citizen Complaints"], "summary": "List own complaints", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } }, "post": { "tags": ["Citizen Complaints"], "summary": "Create complaint", "responses": { "201": { "$ref": "#/components/responses/Success" }, "422": { "$ref": "#/components/responses/ValidationError" } } } },
+    "/citizen/complaints/{complaint}": { "get": { "tags": ["Citizen Complaints"], "summary": "Show own complaint", "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "responses": { "200": { "$ref": "#/components/responses/Success" }, "403": { "$ref": "#/components/responses/Error" } } } },
+    "/citizen/complaints/{complaint}/attachments": { "post": { "tags": ["Citizen Complaints"], "summary": "Add complaint attachments", "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "responses": { "201": { "$ref": "#/components/responses/Success" } } } },
+    "/citizen/offline/complaints/sync": { "post": { "tags": ["Citizen Complaints"], "summary": "Sync offline complaint", "responses": { "200": { "$ref": "#/components/responses/Success" }, "201": { "$ref": "#/components/responses/Success" } } } },
+    "/citizen/offline/submissions": { "get": { "tags": ["Citizen Complaints"], "summary": "List offline submissions", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } } },
+    "/citizen/offline/submissions/{offlineSubmission}": { "get": { "tags": ["Citizen Complaints"], "summary": "Show offline submission", "responses": { "200": { "$ref": "#/components/responses/Success" }, "403": { "$ref": "#/components/responses/Error" } } } },
+    "/employee/complaints": { "get": { "tags": ["Employee Complaints"], "summary": "List accessible complaints", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } } },
+    "/employee/complaints/{complaint}": { "get": { "tags": ["Employee Complaints"], "summary": "Show accessible complaint", "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/employee/complaints/{complaint}/status": { "patch": { "tags": ["Employee Complaints"], "summary": "Update status", "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/complaints": { "get": { "tags": ["Admin Management"], "summary": "List all complaints", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } } },
+    "/admin/complaints/{complaint}": { "get": { "tags": ["Admin Management"], "summary": "Show complaint", "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/complaints/{complaint}/assign": { "patch": { "tags": ["Admin Management"], "summary": "Assign complaint", "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/complaints/{complaint}/department": { "patch": { "tags": ["Admin Management"], "summary": "Change complaint department", "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/complaints/{complaint}/priority": { "patch": { "tags": ["Admin Management"], "summary": "Change complaint priority", "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/complaints/{complaint}/status": { "patch": { "tags": ["Admin Management"], "summary": "Admin update status", "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/departments": { "get": { "tags": ["Admin Management"], "summary": "List departments", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } }, "post": { "tags": ["Admin Management"], "summary": "Create department", "responses": { "201": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/departments/{department}": { "get": { "tags": ["Admin Management"], "summary": "Show department", "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "put": { "tags": ["Admin Management"], "summary": "Update department", "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "delete": { "tags": ["Admin Management"], "summary": "Delete department", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/categories": { "get": { "tags": ["Admin Management"], "summary": "List categories", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } }, "post": { "tags": ["Admin Management"], "summary": "Create category", "responses": { "201": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/categories/{category}": { "get": { "tags": ["Admin Management"], "summary": "Show category", "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "put": { "tags": ["Admin Management"], "summary": "Update category", "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "delete": { "tags": ["Admin Management"], "summary": "Delete category", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/priorities": { "get": { "tags": ["Admin Management"], "summary": "List priorities", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } }, "post": { "tags": ["Admin Management"], "summary": "Create priority", "responses": { "201": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/priorities/{priority}": { "get": { "tags": ["Admin Management"], "summary": "Show priority", "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "put": { "tags": ["Admin Management"], "summary": "Update priority", "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "delete": { "tags": ["Admin Management"], "summary": "Delete priority", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/sla-rules": { "get": { "tags": ["Admin Management"], "summary": "List SLA rules", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } }, "post": { "tags": ["Admin Management"], "summary": "Create SLA rule", "responses": { "201": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/sla-rules/{sla_rule}": { "get": { "tags": ["Admin Management"], "summary": "Show SLA rule", "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "put": { "tags": ["Admin Management"], "summary": "Update SLA rule", "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "delete": { "tags": ["Admin Management"], "summary": "Delete SLA rule", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/notifications": { "get": { "tags": ["Notifications"], "summary": "List notifications", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } } },
+    "/notifications/unread-count": { "get": { "tags": ["Notifications"], "summary": "Unread count", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/notifications/read-all": { "patch": { "tags": ["Notifications"], "summary": "Read all notifications", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/notifications/{notification}/read": { "patch": { "tags": ["Notifications"], "summary": "Read notification", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/notifications/{notification}": { "delete": { "tags": ["Notifications"], "summary": "Delete notification", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/device-tokens": { "get": { "tags": ["Notifications"], "summary": "List device tokens", "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "post": { "tags": ["Notifications"], "summary": "Register device token", "responses": { "201": { "$ref": "#/components/responses/Success" } } } },
+    "/device-tokens/{deviceToken}": { "delete": { "tags": ["Notifications"], "summary": "Delete device token", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/notification-preferences": { "get": { "tags": ["Notifications"], "summary": "Get preferences", "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "patch": { "tags": ["Notifications"], "summary": "Update preferences", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/notification-delivery-logs": { "get": { "tags": ["Admin Management"], "summary": "List delivery logs", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } } },
+    "/admin/notification-delivery-logs/{notificationDeliveryLog}": { "get": { "tags": ["Admin Management"], "summary": "Show delivery log", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/reports/overview": { "get": { "tags": ["Reports"], "summary": "Overview report", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/reports/complaints-by-status": { "get": { "tags": ["Reports"], "summary": "Complaints by status", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/reports/complaints-by-department": { "get": { "tags": ["Reports"], "summary": "Complaints by department", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/reports/complaints-by-priority": { "get": { "tags": ["Reports"], "summary": "Complaints by priority", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/reports/sla-performance": { "get": { "tags": ["Reports"], "summary": "SLA performance", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/reports/employee-performance": { "get": { "tags": ["Reports"], "summary": "Employee performance", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/reports/complaint-trends": { "get": { "tags": ["Reports"], "summary": "Complaint trends", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/reports/sla-breaches": { "get": { "tags": ["Reports"], "summary": "SLA breaches", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } } },
+    "/admin/reports/snapshots": { "get": { "tags": ["Reports"], "summary": "List snapshots", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } }, "post": { "tags": ["Reports"], "summary": "Create snapshot", "responses": { "201": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/reports/snapshots/{reportSnapshot}": { "get": { "tags": ["Reports"], "summary": "Show snapshot", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/classification/complaints/preview": { "post": { "tags": ["Classification"], "summary": "Preview classification", "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/classification-rules": { "get": { "tags": ["Classification"], "summary": "List classification rules", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } }, "post": { "tags": ["Classification"], "summary": "Create classification rule", "responses": { "201": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/classification-rules/{classification_rule}": { "get": { "tags": ["Classification"], "summary": "Show classification rule", "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "put": { "tags": ["Classification"], "summary": "Update classification rule", "responses": { "200": { "$ref": "#/components/responses/Success" } } }, "delete": { "tags": ["Classification"], "summary": "Delete classification rule", "responses": { "200": { "$ref": "#/components/responses/Success" } } } }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Sanctum"
+      }
+    },
+    "parameters": {
+      "ComplaintId": {
+        "name": "complaint",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "integer" }
+      }
+    },
+    "responses": {
+      "Success": {
+        "description": "Success envelope",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/SuccessEnvelope" }
+          }
+        }
+      },
+      "PaginatedSuccess": {
+        "description": "Success envelope with pagination metadata",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/SuccessEnvelope" }
+          }
+        }
+      },
+      "Error": {
+        "description": "Error envelope",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorEnvelope" }
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "Validation error envelope",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorEnvelope" }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "SuccessEnvelope": {
+        "type": "object",
+        "required": ["success", "message", "data", "meta"],
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "message": { "type": "string" },
+          "data": { "type": "object" },
+          "meta": { "type": "object" }
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "required": ["success", "message", "errors"],
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "message": { "type": "string" },
+          "errors": { "type": "object" }
+        }
+      }
+    }
+  }
+}

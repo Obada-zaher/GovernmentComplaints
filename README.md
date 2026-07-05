@@ -179,19 +179,24 @@ Accept: application/json
 
 ## Postman Collections
 
-Postman files are organized by module:
+The API documentation for frontend teams is simplified into three files:
 
-- `docs/postman/collections/00-health.postman_collection.json`
-- `docs/postman/collections/01-auth.postman_collection.json`
-- `docs/postman/collections/02-lookups.postman_collection.json`
-- `docs/postman/collections/03-admin-management.postman_collection.json`
-- `docs/postman/collections/04-citizen-complaints.postman_collection.json`
-- `docs/postman/collections/05-employee-complaints.postman_collection.json`
-- `docs/postman/collections/06-notifications.postman_collection.json`
-- `docs/postman/collections/07-reports.postman_collection.json`
-- `docs/postman/collections/08-classification.postman_collection.json`
+- `docs/postman/shared.postman_collection.json`
+- `docs/postman/mobile.postman_collection.json`
+- `docs/postman/web.postman_collection.json`
 
-Import `docs/postman/environments/gcms-local-mailtrap.postman_environment.json`, select it, run `00-health`, then run `01-auth` to obtain tokens.
+Use:
+
+- Shared + Mobile for mobile app team.
+- Shared + Web for web dashboard team.
+
+Environment:
+
+- `docs/postman/gcms-local.postman_environment.json`
+
+More details:
+
+- `docs/postman/README.md`
 
 ## Git Workflow
 

@@ -1,0 +1,2808 @@
+{
+    "info": {
+        "name": "Web APIs",
+        "description": "Admin dashboard and employee dashboard APIs. Admin routes use {{admin_token}}; employee routes use {{employee_token}}.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Auth",
+            "description": "Admin and employee web authentication flow. Copy OTPs from Mailtrap/email into admin_otp or employee_otp.",
+            "item": [
+                {
+                    "name": "Login Admin",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/login",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "Purpose: Start admin login and send OTP by email.\nRequired role: public\nRequired token: none\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"login\": \"{{admin_email}}\",\n    \"password\": \"{{admin_password}}\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.user_id\",\"data.user.id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('admin_user_id', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Verify Admin OTP",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/verify-otp",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "verify-otp"
+                            ]
+                        },
+                        "description": "Purpose: Verify admin OTP and save admin_token.\nRequired role: public\nRequired token: none\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"user_id\": \"{{admin_user_id}}\",\n    \"otp\": \"{{admin_otp}}\",\n    \"purpose\": \"login\",\n    \"device_name\": \"Postman Web Admin\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.token\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('admin_token', value); return true; } return false; });",
+                                    "[[\"data.user.id\",\"data.user_id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('admin_user_id', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Login Employee",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/login",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "Purpose: Start employee login and send OTP by email.\nRequired role: public\nRequired token: none\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"login\": \"{{employee_email}}\",\n    \"password\": \"{{employee_password}}\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.user_id\",\"data.user.id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('employee_user_id', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Verify Employee OTP",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/verify-otp",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "verify-otp"
+                            ]
+                        },
+                        "description": "Purpose: Verify employee OTP and save employee_token.\nRequired role: public\nRequired token: none\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"user_id\": \"{{employee_user_id}}\",\n    \"otp\": \"{{employee_otp}}\",\n    \"purpose\": \"login\",\n    \"device_name\": \"Postman Web Employee\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.token\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('employee_token', value); return true; } return false; });",
+                                    "[[\"data.user.id\",\"data.user_id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('employee_user_id', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Me",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/me",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "me"
+                            ]
+                        },
+                        "description": "Purpose: Return authenticated web user profile.\nRequired role: admin or employee\nRequired token: {{admin_token}} or {{employee_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/logout",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "logout"
+                            ]
+                        },
+                        "description": "Purpose: Logout current web user token.\nRequired role: admin or employee\nRequired token: {{admin_token}} or {{employee_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Change Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/change-password",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "change-password"
+                            ]
+                        },
+                        "description": "Purpose: Change authenticated web user password.\nRequired role: admin or employee\nRequired token: {{admin_token}} or {{employee_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"current_password\": \"{{admin_password}}\",\n    \"password\": \"{{new_password}}\",\n    \"password_confirmation\": \"{{new_password}}\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Logout All",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/logout-all",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "logout-all"
+                            ]
+                        },
+                        "description": "Purpose: Revoke all tokens for authenticated web user.\nRequired role: admin or employee\nRequired token: {{admin_token}} or {{employee_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Admin Management",
+            "description": "Admin-only setup data management.",
+            "item": [
+                {
+                    "name": "List Departments",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/departments",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "departments"
+                            ]
+                        },
+                        "description": "Purpose: List departments.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Departments",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/departments",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "departments"
+                            ]
+                        },
+                        "description": "Purpose: Create departments.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.\nSaves department_id when returned.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Municipality\",\n    \"code\": \"municipality\",\n    \"description\": \"Municipality services\",\n    \"is_active\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.department.id\",\"data.id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('department_id', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Show Departments",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/departments/{{department_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "departments",
+                                "{{department_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Show departments details.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Departments",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/departments/{{department_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "departments",
+                                "{{department_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Update departments.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Municipality Updated\",\n    \"is_active\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete Departments",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/departments/{{department_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "departments",
+                                "{{department_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Delete departments. Re-seed data if later requests depend on the deleted id.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "List Categories",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/categories",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "categories"
+                            ]
+                        },
+                        "description": "Purpose: List categories.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Categories",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/categories",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "categories"
+                            ]
+                        },
+                        "description": "Purpose: Create categories.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.\nSaves category_id when returned.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"department_id\": \"{{department_id}}\",\n    \"name\": \"Road Damage\",\n    \"code\": \"road-damage\",\n    \"keywords\": [\n        \"road\",\n        \"pothole\"\n    ],\n    \"is_active\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.category.id\",\"data.id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('category_id', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Show Categories",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/categories/{{category_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "categories",
+                                "{{category_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Show categories details.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Categories",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/categories/{{category_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "categories",
+                                "{{category_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Update categories.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Road Damage Updated\",\n    \"is_active\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete Categories",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/categories/{{category_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "categories",
+                                "{{category_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Delete categories. Re-seed data if later requests depend on the deleted id.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "List Priorities",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/priorities",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "priorities"
+                            ]
+                        },
+                        "description": "Purpose: List priorities.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Priorities",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/priorities",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "priorities"
+                            ]
+                        },
+                        "description": "Purpose: Create priorities.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.\nSaves priority_id when returned.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"High\",\n    \"code\": \"high\",\n    \"level\": 3,\n    \"color\": \"#dc2626\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.priority.id\",\"data.id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('priority_id', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Show Priorities",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/priorities/{{priority_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "priorities",
+                                "{{priority_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Show priorities details.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Priorities",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/priorities/{{priority_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "priorities",
+                                "{{priority_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Update priorities.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"level\": 4,\n    \"description\": \"Updated priority\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete Priorities",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/priorities/{{priority_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "priorities",
+                                "{{priority_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Delete priorities. Re-seed data if later requests depend on the deleted id.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "List SLA Rules",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/sla-rules",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "sla-rules"
+                            ]
+                        },
+                        "description": "Purpose: List SLA rules.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create SLA Rules",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/sla-rules",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "sla-rules"
+                            ]
+                        },
+                        "description": "Purpose: Create SLA rules.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.\nSaves sla_rule_id when returned.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"department_id\": \"{{department_id}}\",\n    \"category_id\": \"{{category_id}}\",\n    \"priority_id\": \"{{priority_id}}\",\n    \"response_time_hours\": 4,\n    \"resolution_time_hours\": 24,\n    \"is_active\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.sla_rule.id\",\"data.id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('sla_rule_id', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Show SLA Rules",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/sla-rules/{{sla_rule_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "sla-rules",
+                                "{{sla_rule_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Show SLA rules details.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update SLA Rules",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/sla-rules/{{sla_rule_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "sla-rules",
+                                "{{sla_rule_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Update SLA rules.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"response_time_hours\": 6,\n    \"resolution_time_hours\": 36,\n    \"is_active\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete SLA Rules",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/sla-rules/{{sla_rule_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "sla-rules",
+                                "{{sla_rule_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Delete SLA rules. Re-seed data if later requests depend on the deleted id.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Admin Complaints",
+            "description": "Admin-only complaint management routes.",
+            "item": [
+                {
+                    "name": "List Complaints",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/complaints",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "complaints"
+                            ]
+                        },
+                        "description": "Purpose: List all complaints for admin.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Show Complaint",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/complaints/{{complaint_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "complaints",
+                                "{{complaint_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Show complaint details for admin.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Assign Complaint",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/complaints/{{complaint_id}}/assign",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "complaints",
+                                "{{complaint_id}}",
+                                "assign"
+                            ]
+                        },
+                        "description": "Purpose: Assign complaint to an employee.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"employee_id\": \"{{employee_user_id}}\",\n    \"note\": \"Assigned from Postman\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Change Department",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/complaints/{{complaint_id}}/department",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "complaints",
+                                "{{complaint_id}}",
+                                "department"
+                            ]
+                        },
+                        "description": "Purpose: Change complaint department/category.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"department_id\": \"{{department_id}}\",\n    \"category_id\": \"{{category_id}}\",\n    \"note\": \"Updated department/category from Postman\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Change Priority",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/complaints/{{complaint_id}}/priority",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "complaints",
+                                "{{complaint_id}}",
+                                "priority"
+                            ]
+                        },
+                        "description": "Purpose: Change complaint priority.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"priority_id\": \"{{priority_id}}\",\n    \"note\": \"Updated priority from Postman\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Status",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/complaints/{{complaint_id}}/status",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "complaints",
+                                "{{complaint_id}}",
+                                "status"
+                            ]
+                        },
+                        "description": "Purpose: Update complaint status as admin.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"status\": \"under_review\",\n    \"note\": \"Status updated from Postman\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Employee Dashboard",
+            "description": "Employee-only complaint dashboard routes.",
+            "item": [
+                {
+                    "name": "List Accessible Complaints",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/employee/complaints",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "employee",
+                                "complaints"
+                            ]
+                        },
+                        "description": "Purpose: List complaints accessible to the authenticated employee.\nRequired role: employee\nRequired token: {{employee_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{employee_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Show Complaint",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/employee/complaints/{{complaint_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "employee",
+                                "complaints",
+                                "{{complaint_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Show an employee-accessible complaint.\nRequired role: employee\nRequired token: {{employee_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{employee_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Status",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/employee/complaints/{{complaint_id}}/status",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "employee",
+                                "complaints",
+                                "{{complaint_id}}",
+                                "status"
+                            ]
+                        },
+                        "description": "Purpose: Update status for an accessible complaint.\nRequired role: employee\nRequired token: {{employee_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{employee_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"status\": \"in_progress\",\n    \"note\": \"Employee status update from Postman\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Reports",
+            "description": "Admin-only dashboard analytics routes.",
+            "item": [
+                {
+                    "name": "Overview",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/reports/overview",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "reports",
+                                "overview"
+                            ]
+                        },
+                        "description": "Purpose: Get dashboard overview metrics.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Complaints By Status",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/reports/complaints-by-status",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "reports",
+                                "complaints-by-status"
+                            ]
+                        },
+                        "description": "Purpose: Get complaint distribution by status.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Complaints By Department",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/reports/complaints-by-department",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "reports",
+                                "complaints-by-department"
+                            ]
+                        },
+                        "description": "Purpose: Get complaint metrics by department.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Complaints By Priority",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/reports/complaints-by-priority",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "reports",
+                                "complaints-by-priority"
+                            ]
+                        },
+                        "description": "Purpose: Get complaint metrics by priority.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "SLA Performance",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/reports/sla-performance",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "reports",
+                                "sla-performance"
+                            ]
+                        },
+                        "description": "Purpose: Get SLA performance metrics.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Employee Performance",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/reports/employee-performance",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "reports",
+                                "employee-performance"
+                            ]
+                        },
+                        "description": "Purpose: Get employee performance metrics.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Complaint Trends",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/reports/complaint-trends",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "reports",
+                                "complaint-trends"
+                            ],
+                            "query": [
+                                {
+                                    "key": "date_from",
+                                    "value": "{{report_date_from}}",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "date_to",
+                                    "value": "{{report_date_to}}",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "group_by",
+                                    "value": "{{group_by}}",
+                                    "disabled": false
+                                }
+                            ]
+                        },
+                        "description": "Purpose: Get complaint trends. Optional query variables are included.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "SLA Breaches",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/reports/sla-breaches",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "reports",
+                                "sla-breaches"
+                            ]
+                        },
+                        "description": "Purpose: Get paginated SLA breach report.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Classification Management",
+            "description": "Admin-only classification rule management plus authenticated preview.",
+            "item": [
+                {
+                    "name": "Preview Complaint Classification",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/classification/complaints/preview",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "classification",
+                                "complaints",
+                                "preview"
+                            ]
+                        },
+                        "description": "Purpose: Preview rule-based classification.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"title\": \"Power outage\",\n    \"description\": \"There is no electricity in the neighborhood.\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "List Rules",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/classification-rules",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "classification-rules"
+                            ]
+                        },
+                        "description": "Purpose: List classification rules.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Rule",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/classification-rules",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "classification-rules"
+                            ]
+                        },
+                        "description": "Purpose: Create classification rule. Saves classification_rule_id when returned.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"department_id\": \"{{department_id}}\",\n    \"category_id\": \"{{category_id}}\",\n    \"keyword\": \"broken lamp\",\n    \"weight\": 5,\n    \"is_active\": true,\n    \"language\": \"en\",\n    \"notes\": \"Street lighting keyword\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.classification_rule.id\",\"data.id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('classification_rule_id', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Show Rule",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/classification-rules/{{classification_rule_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "classification-rules",
+                                "{{classification_rule_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Show classification rule.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Rule",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/classification-rules/{{classification_rule_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "classification-rules",
+                                "{{classification_rule_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Update classification rule.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"keyword\": \"broken street lamp\",\n    \"weight\": 6,\n    \"is_active\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete Rule",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/classification-rules/{{classification_rule_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "classification-rules",
+                                "{{classification_rule_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Delete classification rule.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Notification Admin",
+            "description": "Admin-only delivery log inspection routes.",
+            "item": [
+                {
+                    "name": "List Delivery Logs",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/notification-delivery-logs",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "notification-delivery-logs"
+                            ]
+                        },
+                        "description": "Purpose: List notification delivery logs. Saves notification_delivery_log_id when returned.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.delivery_logs.0.id\",\"data.notification_delivery_logs.0.id\",\"data.0.id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('notification_delivery_log_id', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Show Delivery Log",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/notification-delivery-logs/{{notification_delivery_log_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "notification-delivery-logs",
+                                "{{notification_delivery_log_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Show one notification delivery log.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

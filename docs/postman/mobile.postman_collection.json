@@ -1,0 +1,1470 @@
+{
+    "info": {
+        "name": "Mobile APIs",
+        "description": "Citizen-facing APIs for the mobile application. Protected requests use {{citizen_token}}.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Auth",
+            "description": "Mobile citizen authentication flow. Copy OTPs from Mailtrap/email into citizen_otp.",
+            "item": [
+                {
+                    "name": "Login Citizen",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/login",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "Purpose: Start citizen login and send OTP by email.\nRequired role: public\nRequired token: none\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"login\": \"{{citizen_email}}\",\n    \"password\": \"{{citizen_password}}\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.user_id\",\"data.user.id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('citizen_user_id', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Verify Citizen OTP",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/verify-otp",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "verify-otp"
+                            ]
+                        },
+                        "description": "Purpose: Verify citizen OTP and save citizen_token.\nRequired role: public\nRequired token: none\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"user_id\": \"{{citizen_user_id}}\",\n    \"otp\": \"{{citizen_otp}}\",\n    \"purpose\": \"login\",\n    \"device_name\": \"Postman Mobile\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.token\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('citizen_token', value); return true; } return false; });",
+                                    "[[\"data.user.id\",\"data.user_id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('citizen_user_id', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Me",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/me",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "me"
+                            ]
+                        },
+                        "description": "Purpose: Return citizen profile.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/logout",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "logout"
+                            ]
+                        },
+                        "description": "Purpose: Logout citizen current token.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Change Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/change-password",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "change-password"
+                            ]
+                        },
+                        "description": "Purpose: Change citizen password.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"current_password\": \"{{citizen_password}}\",\n    \"password\": \"{{new_password}}\",\n    \"password_confirmation\": \"{{new_password}}\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Forgot Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/forgot-password",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "forgot-password"
+                            ]
+                        },
+                        "description": "Purpose: Request password reset email for citizen.\nRequired role: public\nRequired token: none\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{citizen_email}}\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Reset Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/reset-password",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "reset-password"
+                            ]
+                        },
+                        "description": "Purpose: Reset password using reset token copied from email.\nRequired role: public\nRequired token: none\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{citizen_email}}\",\n    \"token\": \"{{reset_token}}\",\n    \"password\": \"{{new_password}}\",\n    \"password_confirmation\": \"{{new_password}}\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Citizen Complaints",
+            "description": "Citizen complaint creation and viewing routes.",
+            "item": [
+                {
+                    "name": "List My Complaints",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/citizen/complaints",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "citizen",
+                                "complaints"
+                            ]
+                        },
+                        "description": "Purpose: List complaints owned by the authenticated citizen.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Complaint",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/citizen/complaints",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "citizen",
+                                "complaints"
+                            ]
+                        },
+                        "description": "Purpose: Create a complaint with JSON body. Saves complaint_id and complaint_number when returned.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"title\": \"Street light is broken\",\n    \"description\": \"The street light near my house has been broken for three days.\",\n    \"department_id\": \"{{department_id}}\",\n    \"category_id\": \"{{category_id}}\",\n    \"priority_id\": \"{{priority_id}}\",\n    \"latitude\": 33.5138,\n    \"longitude\": 36.2765,\n    \"address\": \"Damascus\",\n    \"source\": \"mobile\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.id\",\"data.complaint.id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('complaint_id', value); return true; } return false; });",
+                                    "[[\"data.complaint_number\",\"data.complaint.complaint_number\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('complaint_number', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Complaint With Attachment",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/citizen/complaints",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "citizen",
+                                "complaints"
+                            ]
+                        },
+                        "description": "Purpose: Create a complaint using multipart form data. Select a local file for attachments[].\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "title",
+                                    "value": "Complaint with attachment",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "description",
+                                    "value": "This complaint includes an attachment.",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "department_id",
+                                    "value": "{{department_id}}",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "category_id",
+                                    "value": "{{category_id}}",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "priority_id",
+                                    "value": "{{priority_id}}",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "attachments[]",
+                                    "type": "file",
+                                    "src": []
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.id\",\"data.complaint.id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('complaint_id', value); return true; } return false; });",
+                                    "[[\"data.complaint_number\",\"data.complaint.complaint_number\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('complaint_number', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Show My Complaint",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/citizen/complaints/{{complaint_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "citizen",
+                                "complaints",
+                                "{{complaint_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Show one citizen complaint.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Add Attachment",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/citizen/complaints/{{complaint_id}}/attachments",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "citizen",
+                                "complaints",
+                                "{{complaint_id}}",
+                                "attachments"
+                            ]
+                        },
+                        "description": "Purpose: Add attachment files to an existing citizen complaint.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "attachments[]",
+                                    "type": "file",
+                                    "src": []
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Offline Sync",
+            "description": "Offline sync routes. Mobile clients generate client_uuid and can retry safely; sending the same client_uuid should not create a duplicate complaint.",
+            "item": [
+                {
+                    "name": "Sync Offline Complaint",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/citizen/offline/complaints/sync",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "citizen",
+                                "offline",
+                                "complaints",
+                                "sync"
+                            ]
+                        },
+                        "description": "Purpose: Sync one offline complaint. Saves offline_submission_id and complaint details.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.\nclient_uuid is generated by the mobile app and used for idempotency.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"client_uuid\": \"{{offline_client_uuid}}\",\n    \"title\": \"Offline complaint from mobile\",\n    \"description\": \"This complaint was created while the user was offline.\",\n    \"department_id\": \"{{department_id}}\",\n    \"category_id\": \"{{category_id}}\",\n    \"priority_id\": \"{{priority_id}}\",\n    \"latitude\": 33.5138,\n    \"longitude\": 36.2765,\n    \"address\": \"Damascus\",\n    \"created_offline_at\": \"2026-07-05T10:00:00Z\",\n    \"source\": \"offline_sync\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.offline_submission.id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('offline_submission_id', value); return true; } return false; });",
+                                    "[[\"data.complaint.id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('complaint_id', value); return true; } return false; });",
+                                    "[[\"data.complaint.complaint_number\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('complaint_number', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Sync Same Offline Complaint Again",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/citizen/offline/complaints/sync",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "citizen",
+                                "offline",
+                                "complaints",
+                                "sync"
+                            ]
+                        },
+                        "description": "Purpose: Retry the same client_uuid to verify idempotency. The response may include meta.idempotent=true.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"client_uuid\": \"{{offline_client_uuid}}\",\n    \"title\": \"Offline complaint from mobile\",\n    \"description\": \"This complaint was created while the user was offline.\",\n    \"department_id\": \"{{department_id}}\",\n    \"category_id\": \"{{category_id}}\",\n    \"priority_id\": \"{{priority_id}}\",\n    \"source\": \"offline_sync\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "if (json.meta && json.meta.idempotent !== undefined) { pm.test('idempotent retry', function () { pm.expect(json.meta.idempotent).to.eql(true); }); }"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "List Offline Submissions",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/citizen/offline/submissions",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "citizen",
+                                "offline",
+                                "submissions"
+                            ]
+                        },
+                        "description": "Purpose: List offline submissions owned by the citizen.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Show Offline Submission",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/citizen/offline/submissions/{{offline_submission_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "citizen",
+                                "offline",
+                                "submissions",
+                                "{{offline_submission_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Show one offline submission owned by the citizen.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Notifications",
+            "description": "Citizen notification inbox routes.",
+            "item": [
+                {
+                    "name": "List My Notifications",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/notifications",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "notifications"
+                            ]
+                        },
+                        "description": "Purpose: List notifications for the authenticated user.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.notifications.0.id\",\"data.0.id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('notification_id', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Unread Count",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/notifications/unread-count",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "notifications",
+                                "unread-count"
+                            ]
+                        },
+                        "description": "Purpose: Return unread notification count.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Mark Notification Read",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/notifications/{{notification_id}}/read",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "notifications",
+                                "{{notification_id}}",
+                                "read"
+                            ]
+                        },
+                        "description": "Purpose: Mark one notification as read.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Mark All Read",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/notifications/read-all",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "notifications",
+                                "read-all"
+                            ]
+                        },
+                        "description": "Purpose: Mark all current user notifications as read.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete Notification",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/notifications/{{notification_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "notifications",
+                                "{{notification_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Delete one owned notification.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Devices and Preferences",
+            "description": "Device token and notification preference routes. Real device tokens come from the Firebase SDK; Postman uses fake_fcm_token only for backend testing.",
+            "item": [
+                {
+                    "name": "Register Device Token",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/device-tokens",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "device-tokens"
+                            ]
+                        },
+                        "description": "Purpose: Register or update a device token.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.\nSaves device_token_id when returned.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"token\": \"{{fake_fcm_token}}\",\n    \"platform\": \"android\",\n    \"device_name\": \"Postman Android Device\",\n    \"app_version\": \"1.0.0\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });",
+                                    "var json = pm.response.json();",
+                                    "function getPath(obj, path) { return path.split('.').reduce(function (current, key) { return current && current[key] !== undefined ? current[key] : undefined; }, obj); }",
+                                    "[[\"data.device_token.id\",\"data.id\"]].flat().some(function (path) { var value = getPath(json, path); if (value !== undefined && value !== null && value !== '') { pm.environment.set('device_token_id', value); return true; } return false; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "List Device Tokens",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/device-tokens",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "device-tokens"
+                            ]
+                        },
+                        "description": "Purpose: List current user device tokens.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete Device Token",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/device-tokens/{{device_token_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "device-tokens",
+                                "{{device_token_id}}"
+                            ]
+                        },
+                        "description": "Purpose: Deactivate/delete an owned device token.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Notification Preferences",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/notification-preferences",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "notification-preferences"
+                            ]
+                        },
+                        "description": "Purpose: Get current user notification preferences.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Notification Preferences",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/notification-preferences",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "notification-preferences"
+                            ]
+                        },
+                        "description": "Purpose: Update current user notification preferences.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email_enabled\": true,\n    \"push_enabled\": true,\n    \"sms_enabled\": false,\n    \"complaint_assigned\": true,\n    \"sla_breached\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Classification Preview",
+            "description": "Rule-based complaint classification preview before submit.",
+            "item": [
+                {
+                    "name": "Preview Complaint Classification",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/classification/complaints/preview",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "classification",
+                                "complaints",
+                                "preview"
+                            ]
+                        },
+                        "description": "Purpose: Preview predicted department/category without creating a complaint.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"title\": \"Street light is broken\",\n    \"description\": \"The lamp in our street has not worked for three days.\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200 or 201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                                    "pm.test('response has success key', function () { var json = pm.response.json(); pm.expect(json).to.have.property('success'); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

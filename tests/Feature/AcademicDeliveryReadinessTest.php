@@ -36,13 +36,17 @@ class AcademicDeliveryReadinessTest extends TestCase
 
     public function test_postman_collection_and_environment_files_exist(): void
     {
-        foreach (range(0, 8) as $number) {
-            $prefix = str_pad((string) $number, 2, '0', STR_PAD_LEFT);
-            $this->assertNotEmpty(glob(base_path("docs/postman/collections/{$prefix}-*.postman_collection.json")));
+        $collections = [
+            'docs/postman/shared.postman_collection.json',
+            'docs/postman/mobile.postman_collection.json',
+            'docs/postman/web.postman_collection.json',
+        ];
+
+        foreach ($collections as $collection) {
+            $this->assertFileExists(base_path($collection));
         }
 
-        $this->assertFileExists(base_path('docs/postman/environments/gcms-local-mailtrap.postman_environment.json'));
-        $this->assertFileExists(base_path('docs/postman/environments/gcms-production-template.postman_environment.json'));
+        $this->assertFileExists(base_path('docs/postman/gcms-local.postman_environment.json'));
     }
 
     public function test_demo_seeder_runs_successfully(): void

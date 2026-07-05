@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Admin\ComplaintCategoryController;
 use App\Http\Controllers\Api\V1\Admin\ComplaintController as AdminComplaintController;
 use App\Http\Controllers\Api\V1\Admin\DepartmentController;
 use App\Http\Controllers\Api\V1\Admin\PriorityController;
+use App\Http\Controllers\Api\V1\Admin\ReportController;
 use App\Http\Controllers\Api\V1\Admin\SlaRuleController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\Citizen\ComplaintController as CitizenComplaintController;
@@ -76,6 +77,19 @@ Route::prefix('v1')->group(function (): void {
             Route::patch('complaints/{complaint}/department', [AdminComplaintController::class, 'changeDepartment']);
             Route::patch('complaints/{complaint}/priority', [AdminComplaintController::class, 'changePriority']);
             Route::patch('complaints/{complaint}/status', [AdminComplaintController::class, 'updateStatus']);
+            Route::prefix('reports')->group(function (): void {
+                Route::get('overview', [ReportController::class, 'overview']);
+                Route::get('complaints-by-status', [ReportController::class, 'complaintsByStatus']);
+                Route::get('complaints-by-department', [ReportController::class, 'complaintsByDepartment']);
+                Route::get('complaints-by-priority', [ReportController::class, 'complaintsByPriority']);
+                Route::get('sla-performance', [ReportController::class, 'slaPerformance']);
+                Route::get('employee-performance', [ReportController::class, 'employeePerformance']);
+                Route::get('complaint-trends', [ReportController::class, 'complaintTrends']);
+                Route::get('sla-breaches', [ReportController::class, 'slaBreaches']);
+                Route::post('snapshots', [ReportController::class, 'storeSnapshot']);
+                Route::get('snapshots', [ReportController::class, 'snapshots']);
+                Route::get('snapshots/{reportSnapshot}', [ReportController::class, 'showSnapshot']);
+            });
             Route::apiResource('departments', DepartmentController::class);
             Route::apiResource('categories', ComplaintCategoryController::class)
                 ->parameters(['categories' => 'category']);

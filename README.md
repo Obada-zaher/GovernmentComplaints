@@ -81,6 +81,30 @@ http://localhost:8000
 
 Docker services include `app`, `mysql`, `redis`, `queue`, and `scheduler`. Defaults are for local development only and do not contain production secrets.
 
+## Render Deployment Notes
+
+Render free plan does not provide Shell access, so deployment startup runs the safe database setup automatically.
+
+During container startup the project runs:
+
+```bash
+php artisan optimize:clear
+php artisan migrate --force
+php artisan db:seed --force
+```
+
+Deployment never uses `migrate:fresh`, `db:wipe`, or any command that deletes existing production data. The seeders are written to update or create stable lookup/demo records, so redeploying the same commit should not duplicate departments, categories, priorities, SLA rules, or demo users.
+
+If lookup endpoints return empty arrays on Render, redeploy the latest commit from the Render dashboard.
+
+Useful Render checks:
+
+```text
+https://governmentcomplaints.onrender.com/api/v1/lookups/departments
+https://governmentcomplaints.onrender.com/api/v1/lookups/categories
+https://governmentcomplaints.onrender.com/api/v1/lookups/priorities
+```
+
 ## Environment Configuration
 
 Copy `.env.example` to `.env` and configure:

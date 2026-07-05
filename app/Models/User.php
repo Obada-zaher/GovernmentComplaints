@@ -3,10 +3,12 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\Auth\ResetPasswordNotification;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -30,6 +32,7 @@ class User extends Authenticatable
         'role',
         'department_id',
         'is_active',
+        'email_verified_at',
         'phone_verified_at',
         'last_login_at',
     ];
@@ -90,6 +93,21 @@ class User extends Authenticatable
         return $this->hasMany(UserNotification::class);
     }
 
+    public function deviceTokens(): HasMany
+    {
+        return $this->hasMany(UserDeviceToken::class);
+    }
+
+    public function notificationPreference(): HasOne
+    {
+        return $this->hasOne(NotificationPreference::class);
+    }
+
+    public function notificationDeliveryLogs(): HasMany
+    {
+        return $this->hasMany(NotificationDeliveryLog::class);
+    }
+
     public function otpCodes(): HasMany
     {
         return $this->hasMany(OtpCode::class);
@@ -98,5 +116,15 @@ class User extends Authenticatable
     public function offlineSubmissions(): HasMany
     {
         return $this->hasMany(OfflineSubmission::class, 'citizen_id');
+    }
+
+    public function authEvents(): HasMany
+    {
+        return $this->hasMany(AuthEvent::class);
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 }

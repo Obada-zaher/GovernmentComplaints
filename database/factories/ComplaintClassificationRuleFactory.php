@@ -20,6 +20,9 @@ class ComplaintClassificationRuleFactory extends Factory
             'keyword' => fake()->unique()->word(),
             'weight' => fake()->numberBetween(1, 10),
             'is_active' => true,
+            'language' => 'mixed',
+            'normalized_keyword' => null,
+            'notes' => null,
         ];
     }
 }

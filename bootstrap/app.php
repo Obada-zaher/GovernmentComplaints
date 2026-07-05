@@ -1,11 +1,14 @@
 <?php
 
+use App\Console\Commands\CheckComplaintSlaBreaches;
+use App\Http\Middleware\RoleMiddleware;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Auth\AuthenticationException;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Validation\ValidationException;
-use App\Http\Middleware\RoleMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -14,6 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withCommands([
+        CheckComplaintSlaBreaches::class,
+    ])
+    ->withSchedule(function (Schedule $schedule): void {
+        $schedule->command('complaints:check-sla')->everyFifteenMinutes();
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => RoleMiddleware::class,
@@ -34,5 +43,15 @@ return Application::configure(basePath: dirname(__DIR__))
                 'message' => 'Unauthenticated.',
                 'errors' => [],
             ], 401);
+        });
+
+        $exceptions->render(function (ThrottleRequestsException $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Too many requests. Please try again later.',
+                'errors' => [
+                    'retry_after' => [$exception->getHeaders()['Retry-After'] ?? null],
+                ],
+            ], 429);
         });
     })->create();

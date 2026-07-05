@@ -22,6 +22,7 @@ class UsersSeeder extends Seeder
                 'role' => 'admin',
                 'department_id' => null,
                 'is_active' => true,
+                'email_verified_at' => now(),
             ],
         );
 
@@ -34,6 +35,7 @@ class UsersSeeder extends Seeder
                 'role' => 'employee',
                 'department_id' => $municipality->id,
                 'is_active' => true,
+                'email_verified_at' => now(),
             ],
         );
 
@@ -46,6 +48,7 @@ class UsersSeeder extends Seeder
                 'role' => 'citizen',
                 'department_id' => null,
                 'is_active' => true,
+                'email_verified_at' => now(),
             ],
         );
     }

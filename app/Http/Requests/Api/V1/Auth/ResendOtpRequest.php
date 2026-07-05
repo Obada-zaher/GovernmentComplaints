@@ -19,7 +19,7 @@ class ResendOtpRequest extends FormRequest
     {
         return [
             'user_id' => ['required', 'integer', 'exists:users,id'],
-            'purpose' => ['required', Rule::in(['register', 'login', 'verify_phone'])],
+            'purpose' => ['required', Rule::in(['register', 'verify_email', 'login'])],
         ];
     }
 }

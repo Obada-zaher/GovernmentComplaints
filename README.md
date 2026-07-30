@@ -95,7 +95,11 @@ php artisan db:seed --force
 
 Deployment never uses `migrate:fresh`, `db:wipe`, or any command that deletes existing production data. The seeders are written to update or create stable lookup/demo records, so redeploying the same commit should not duplicate departments, categories, priorities, SLA rules, or demo users.
 
-If lookup endpoints return empty arrays on Render, redeploy the latest commit from the Render dashboard.
+After pushing to GitHub, deploy the updated application using:
+
+```text
+Render Dashboard -> Manual Deploy -> Deploy latest commit
+```
 
 Useful Render checks:
 

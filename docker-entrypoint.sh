@@ -3,7 +3,7 @@ set -e
 
 echo "Running Laravel deployment startup tasks..."
 
-php artisan optimize:clear || true
+php artisan optimize:clear
 
 php artisan migrate --force
 

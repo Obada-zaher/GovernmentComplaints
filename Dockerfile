@@ -20,6 +20,16 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 COPY . .
 
+RUN mkdir -p \
+        resources/views \
+        storage/framework/views \
+        storage/framework/cache \
+        storage/framework/cache/data \
+        storage/framework/sessions \
+        storage/logs \
+        bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache resources/views || true
+
 RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
 RUN chmod -R 775 storage bootstrap/cache || true

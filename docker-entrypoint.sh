@@ -3,6 +3,17 @@ set -e
 
 echo "Running Laravel deployment startup tasks..."
 
+mkdir -p \
+  resources/views \
+  storage/framework/views \
+  storage/framework/cache \
+  storage/framework/cache/data \
+  storage/framework/sessions \
+  storage/logs \
+  bootstrap/cache
+
+chmod -R 775 storage bootstrap/cache resources/views || true
+
 php artisan config:clear || true
 php artisan route:clear || true
 php artisan view:clear || true

@@ -97,6 +97,8 @@ Deployment never uses `migrate:fresh`, `db:wipe`, or any command that deletes ex
 
 If a Render deployment exits with status 1, inspect the Render Logs for the failing startup command. Startup runs `php artisan migrate --force` and `php artisan db:seed --force`; it never runs `migrate:fresh`. For MySQL set `DB_CONNECTION=mysql`. For PostgreSQL set `DB_CONNECTION=pgsql` and ensure the Docker image includes the `pdo_pgsql` PHP extension.
 
+If Render reports `View path not found` or `Please provide a valid cache path`, the container is missing Laravel's view/cache directories. The Dockerfile and Docker entrypoint create `resources/views`, `storage/framework/views`, `storage/framework/cache/data`, `storage/framework/sessions`, and `bootstrap/cache` before Laravel commands run.
+
 After pushing to GitHub, deploy the updated application using:
 
 ```text

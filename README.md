@@ -95,6 +95,8 @@ php artisan db:seed --force
 
 Deployment never uses `migrate:fresh`, `db:wipe`, or any command that deletes existing production data. The seeders are written to update or create stable lookup/demo records, so redeploying the same commit should not duplicate departments, categories, priorities, SLA rules, or demo users.
 
+If a Render deployment exits with status 1, inspect the Render Logs for the failing startup command. Startup runs `php artisan migrate --force` and `php artisan db:seed --force`; it never runs `migrate:fresh`. For MySQL set `DB_CONNECTION=mysql`. For PostgreSQL set `DB_CONNECTION=pgsql` and ensure the Docker image includes the `pdo_pgsql` PHP extension.
+
 After pushing to GitHub, deploy the updated application using:
 
 ```text

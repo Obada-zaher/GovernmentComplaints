@@ -50,7 +50,9 @@ class ComplaintService
                 'address' => $data['address'] ?? null,
                 'source' => $data['source'] ?? 'web',
                 'client_uuid' => $data['client_uuid'] ?? null,
-                'classification_confidence' => $classification['confidence'],
+                'classification_confidence' => $this->normalizeClassificationConfidence(
+                    $classification['confidence'] ?? 0,
+                ),
                 'due_at' => $this->slaDeadlineService->calculate($departmentId, $category?->id, $priorityId),
             ]);
 
@@ -204,5 +206,10 @@ class ComplaintService
         }
 
         return [$data, $autoAssigned];
+    }
+
+    private function normalizeClassificationConfidence(mixed $confidence): float
+    {
+        return round(max(0, min(100, (float) $confidence)), 2);
     }
 }

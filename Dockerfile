@@ -10,8 +10,9 @@ RUN apt-get update \
         libzip-dev \
         libpng-dev \
         libonig-dev \
+        libpq-dev \
         default-mysql-client \
-    && docker-php-ext-install pdo_mysql mbstring zip gd bcmath \
+    && docker-php-ext-install pdo_mysql pdo_pgsql mbstring zip gd bcmath \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

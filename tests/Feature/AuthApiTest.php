@@ -7,6 +7,8 @@ use App\Models\OtpCode;
 use App\Models\User;
 use App\Notifications\Auth\OtpCodeNotification;
 use App\Notifications\Auth\ResetPasswordNotification;
+use App\Services\OtpService;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -17,6 +19,14 @@ use Tests\TestCase;
 class AuthApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('otp.fixed_code_enabled', false);
+        config()->set('otp.fixed_code', '000000');
+    }
 
     public function test_register_does_not_return_otp(): void
     {
@@ -104,6 +114,97 @@ class AuthApiTest extends TestCase
             'user_id' => $user->id,
             'purpose' => 'login',
         ]);
+    }
+
+    public function test_fixed_otp_mode_generates_a_hashed_fixed_code_for_registration(): void
+    {
+        Notification::fake();
+        config()->set('otp.fixed_code_enabled', true);
+
+        $response = $this->postJson('/api/v1/auth/register', $this->registrationPayload());
+        $otp = OtpCode::query()->where('user_id', $response->json('data.user_id'))->latest()->firstOrFail();
+
+        $this->assertTrue(Hash::check('000000', $otp->code_hash));
+        $this->assertNotSame('000000', $otp->code_hash);
+        $response->assertJsonMissingPath('data.otp');
+    }
+
+    public function test_fixed_otp_mode_verifies_registration_login_and_resend_codes(): void
+    {
+        Notification::fake();
+        config()->set('otp.fixed_code_enabled', true);
+
+        $registration = $this->postJson('/api/v1/auth/register', $this->registrationPayload());
+        $userId = $registration->json('data.user_id');
+
+        $this->postJson('/api/v1/auth/verify-otp', [
+            'user_id' => $userId,
+            'otp' => '000000',
+            'purpose' => 'register',
+        ])->assertOk();
+
+        $this->postJson('/api/v1/auth/login', [
+            'login' => 'citizen@example.com',
+            'password' => 'password',
+        ])->assertOk();
+
+        $this->postJson('/api/v1/auth/resend-otp', [
+            'user_id' => $userId,
+            'purpose' => 'login',
+        ])->assertOk();
+
+        $this->postJson('/api/v1/auth/verify-otp', [
+            'user_id' => $userId,
+            'otp' => '000000',
+            'purpose' => 'login',
+        ])->assertOk();
+    }
+
+    public function test_fixed_otp_mode_rejects_an_incorrect_code(): void
+    {
+        Notification::fake();
+        config()->set('otp.fixed_code_enabled', true);
+
+        $response = $this->postJson('/api/v1/auth/register', $this->registrationPayload());
+
+        $this->postJson('/api/v1/auth/verify-otp', [
+            'user_id' => $response->json('data.user_id'),
+            'otp' => '111111',
+            'purpose' => 'register',
+        ])->assertUnprocessable();
+    }
+
+    public function test_random_otp_mode_generates_a_six_digit_code(): void
+    {
+        $otp = app(OtpService::class)->generate();
+
+        $this->assertMatchesRegularExpression('/^\d{6}$/', $otp);
+    }
+
+    public function test_fixed_otp_mode_falls_back_to_default_for_an_invalid_configured_code(): void
+    {
+        config()->set('otp.fixed_code_enabled', true);
+        config()->set('otp.fixed_code', 'invalid');
+
+        $this->assertSame('000000', app(OtpService::class)->generate());
+    }
+
+    public function test_fixed_otp_mode_does_not_fail_when_notification_delivery_fails(): void
+    {
+        config()->set('otp.fixed_code_enabled', true);
+        $user = User::factory()->create();
+        $exception = new \RuntimeException('Mail delivery failed.');
+
+        $handler = \Mockery::mock(ExceptionHandler::class);
+        $handler->shouldReceive('report')->once()->with($exception);
+        app()->instance(ExceptionHandler::class, $handler);
+
+        Notification::shouldReceive('send')->once()->andThrow($exception);
+
+        app(OtpService::class)->createForUser($user, 'login');
+
+        $otp = OtpCode::query()->where('user_id', $user->id)->latest()->firstOrFail();
+        $this->assertTrue(Hash::check('000000', $otp->code_hash));
     }
 
     public function test_unverified_login_sends_email_verification_otp(): void

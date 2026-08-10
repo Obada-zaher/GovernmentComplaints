@@ -10,15 +10,22 @@ use Illuminate\Support\Facades\Hash;
 class OtpService
 {
     public const MAX_ATTEMPTS = 5;
+
     public const EXPIRES_IN_MINUTES = 10;
 
     public function generate(): string
     {
+        if (config('otp.fixed_code_enabled')) {
+            $fixedCode = config('otp.fixed_code');
+
+            return is_string($fixedCode) && preg_match('/^\d{6}$/', $fixedCode)
+                ? $fixedCode
+                : '000000';
+        }
+
         return str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
     }
 
-    /**
-     */
     public function createForUser(User $user, string $purpose): OtpCode
     {
         OtpCode::query()
@@ -39,7 +46,15 @@ class OtpService
             'attempts' => 0,
         ]);
 
-        $user->notify(new OtpCodeNotification($plainOtp, $purpose, self::EXPIRES_IN_MINUTES));
+        try {
+            $user->notify(new OtpCodeNotification($plainOtp, $purpose, self::EXPIRES_IN_MINUTES));
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            if (! config('otp.fixed_code_enabled')) {
+                throw $exception;
+            }
+        }
 
         return $otp;
     }

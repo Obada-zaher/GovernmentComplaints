@@ -141,6 +141,19 @@ php artisan config:clear
 
 OTP codes and password reset tokens are never returned in API responses.
 
+## Fixed OTP for Frontend Testing
+
+For shared frontend testing without Mailtrap access, set these variables in Render:
+
+```text
+OTP_FIXED_CODE_ENABLED=true
+OTP_FIXED_CODE=000000
+```
+
+Then every OTP purpose implemented by the backend (register, login, resend OTP, email verification, and any future OTP purpose using `OtpService`) accepts `000000`. OTP records remain hashed and are never returned by the API. If email delivery fails while this mode is enabled, the normal OTP-required response is still returned.
+
+Do not enable this in real production.
+
 ## Database and Demo Data
 
 Default seed:

@@ -40,6 +40,8 @@ Web team imports:
 
 The API does not return OTP values in responses.
 
+For Render demo testing, when `OTP_FIXED_CODE_ENABLED=true` and `OTP_FIXED_CODE=000000` are configured, use `000000` for every OTP purpose. This does not change any request or response shape.
+
 ## Base URL
 
 Local:

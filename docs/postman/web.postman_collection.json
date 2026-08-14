@@ -423,6 +423,84 @@
             "description": "Admin-only setup data management.",
             "item": [
                 {
+                    "name": "List Employees",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/admin/employees?search=&department_id=&is_active=&page=&per_page=",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "admin",
+                                "employees"
+                            ],
+                            "query": [
+                                {
+                                    "key": "search",
+                                    "value": "",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "department_id",
+                                    "value": "",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "is_active",
+                                    "value": "",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "per_page",
+                                    "value": "",
+                                    "disabled": true
+                                }
+                            ]
+                        },
+                        "description": "Purpose: List government employees for complaint assignment. Optional query parameters: search, department_id, is_active, page, per_page.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS paginated API envelope. Saves the first returned employee id to {{employee_id}}.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200', function () { pm.response.to.have.status(200); });",
+                                    "var json = pm.response.json();",
+                                    "pm.test('response is successful', function () { pm.expect(json.success).to.eql(true); });",
+                                    "pm.test('employees is an array', function () { pm.expect(json.data.employees).to.be.an('array'); });",
+                                    "pm.test('pagination meta exists', function () { pm.expect(json.meta).to.be.an('object'); });",
+                                    "pm.test('returned records are employees', function () { json.data.employees.forEach(function (employee) { pm.expect(employee.role).to.eql('employee'); }); });",
+                                    "if (json.data.employees.length > 0) { pm.environment.set('employee_id', json.data.employees[0].id); }"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
                     "name": "List Departments",
                     "request": {
                         "method": "GET",
@@ -1608,7 +1686,7 @@
                         },
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"employee_id\": \"{{employee_user_id}}\",\n    \"note\": \"Assigned from Postman\"\n}",
+                            "raw": "{\n    \"assigned_employee_id\": \"{{employee_id}}\",\n    \"note\": \"Assigned from Postman\"\n}",
                             "options": {
                                 "raw": {
                                     "language": "json"

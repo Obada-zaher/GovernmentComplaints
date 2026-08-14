@@ -62,6 +62,7 @@ Employee APIs:
 Admin APIs:
 
 - Manage departments, categories, priorities, SLA rules, and classification rules.
+- List, create, view, and update citizens, employees, and admins.
 - List government employees for department-matched complaint assignment.
 - Assign complaints and update complaint lifecycle fields.
 - View reports and analytics.

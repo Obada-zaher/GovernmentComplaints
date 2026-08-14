@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Admin\NotificationDeliveryLogController;
 use App\Http\Controllers\Api\V1\Admin\PriorityController;
 use App\Http\Controllers\Api\V1\Admin\ReportController;
 use App\Http\Controllers\Api\V1\Admin\SlaRuleController;
+use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\Citizen\ComplaintController as CitizenComplaintController;
 use App\Http\Controllers\Api\V1\Citizen\OfflineComplaintSyncController;
@@ -100,6 +101,10 @@ Route::prefix('v1')->group(function (): void {
         ->group(function (): void {
             Route::get('ping', [RolePingController::class, 'admin']);
             Route::get('employees', [EmployeeController::class, 'index']);
+            Route::get('users', [UserController::class, 'index']);
+            Route::post('users', [UserController::class, 'store']);
+            Route::get('users/{user}', [UserController::class, 'show']);
+            Route::patch('users/{user}', [UserController::class, 'update']);
             Route::get('complaints', [AdminComplaintController::class, 'index']);
             Route::get('complaints/{complaint}', [AdminComplaintController::class, 'show']);
             Route::patch('complaints/{complaint}/assign', [AdminComplaintController::class, 'assign']);

@@ -501,6 +501,74 @@
                     ]
                 },
                 {
+                    "name": "Admin User Management",
+                    "description": "Admin-only user listing, creation, viewing, and updates.",
+                    "item": [
+                        {
+                            "name": "List Users",
+                            "request": {
+                                "method": "GET",
+                                "header": [{ "key": "Accept", "value": "application/json" }],
+                                "url": {
+                                    "raw": "{{base_url}}/admin/users?search=&role=&department_id=&is_active=&page=&per_page=",
+                                    "host": ["{{base_url}}"],
+                                    "path": ["admin", "users"],
+                                    "query": [
+                                        { "key": "search", "value": "", "disabled": true },
+                                        { "key": "role", "value": "", "disabled": true },
+                                        { "key": "department_id", "value": "", "disabled": true },
+                                        { "key": "is_active", "value": "", "disabled": true },
+                                        { "key": "page", "value": "", "disabled": true },
+                                        { "key": "per_page", "value": "", "disabled": true }
+                                    ]
+                                },
+                                "description": "Purpose: List citizens, employees, and admins. Optional query parameters: search, role, department_id, is_active, page, per_page.\nRequired role: admin\nRequired token: {{admin_token}}",
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] }
+                            },
+                            "response": [],
+                            "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('status code is 200', function () { pm.response.to.have.status(200); });", "var json = pm.response.json();", "pm.test('users response is successful', function () { pm.expect(json.success).to.eql(true); pm.expect(json.data.users).to.be.an('array'); });", "if (json.data.users.length > 0) { pm.environment.set('user_id', json.data.users[0].id); }"] } }]
+                        },
+                        {
+                            "name": "Create User",
+                            "request": {
+                                "method": "POST",
+                                "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+                                "url": { "raw": "{{base_url}}/admin/users", "host": ["{{base_url}}"], "path": ["admin", "users"] },
+                                "description": "Purpose: Create a user. Employees require an active department; department values for citizens and admins are cleared.\nRequired role: admin\nRequired token: {{admin_token}}",
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] },
+                                "body": { "mode": "raw", "raw": "{\n    \"name\": \"New Employee\",\n    \"email\": \"new.employee@example.test\",\n    \"phone\": \"0990000010\",\n    \"national_id\": \"12345678901\",\n    \"password\": \"password123\",\n    \"password_confirmation\": \"password123\",\n    \"role\": \"employee\",\n    \"department_id\": {{department_id}},\n    \"is_active\": true\n}", "options": { "raw": { "language": "json" } } }
+                            },
+                            "response": [],
+                            "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('status code is 201', function () { pm.response.to.have.status(201); });", "var json = pm.response.json();", "pm.test('user is created', function () { pm.expect(json.success).to.eql(true); pm.expect(json.data.user).to.have.property('id'); });", "pm.environment.set('user_id', json.data.user.id);"] } }]
+                        },
+                        {
+                            "name": "Show User",
+                            "request": {
+                                "method": "GET",
+                                "header": [{ "key": "Accept", "value": "application/json" }],
+                                "url": { "raw": "{{base_url}}/admin/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["admin", "users", "{{user_id}}"] },
+                                "description": "Purpose: Show safe user details.\nRequired role: admin\nRequired token: {{admin_token}}",
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] }
+                            },
+                            "response": [],
+                            "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('status code is 200', function () { pm.response.to.have.status(200); });", "pm.test('user response is successful', function () { var json = pm.response.json(); pm.expect(json.success).to.eql(true); pm.expect(json.data.user).to.have.property('id'); });"] } }]
+                        },
+                        {
+                            "name": "Update User",
+                            "request": {
+                                "method": "PATCH",
+                                "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+                                "url": { "raw": "{{base_url}}/admin/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["admin", "users", "{{user_id}}"] },
+                                "description": "Purpose: Update user fields while enforcing role-specific department rules.\nRequired role: admin\nRequired token: {{admin_token}}",
+                                "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] },
+                                "body": { "mode": "raw", "raw": "{\n    \"name\": \"Updated User\",\n    \"is_active\": true\n}", "options": { "raw": { "language": "json" } } }
+                            },
+                            "response": [],
+                            "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('status code is 200', function () { pm.response.to.have.status(200); });", "pm.test('user update is successful', function () { var json = pm.response.json(); pm.expect(json.success).to.eql(true); pm.expect(json.data.user).to.have.property('id'); });"] } }]
+                        }
+                    ]
+                },
+                {
                     "name": "List Departments",
                     "request": {
                         "method": "GET",

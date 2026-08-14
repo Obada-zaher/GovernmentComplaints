@@ -320,6 +320,60 @@ paths:
         "200": { $ref: "#/components/responses/PaginatedSuccess" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
+  /admin/users:
+    get:
+      tags: [Admin Management]
+      security:
+        - bearerAuth: []
+      summary: List users
+      description: Requires `auth:sanctum` and `role:admin`. Returns citizens, employees, and admins.
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: role, in: query, schema: { type: string, enum: [citizen, employee, admin] } }
+        - { name: department_id, in: query, schema: { type: integer } }
+        - { name: is_active, in: query, schema: { type: boolean } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 15 } }
+      responses:
+        "200": { $ref: "#/components/responses/PaginatedSuccess" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Admin Management]
+      security:
+        - bearerAuth: []
+      summary: Create user
+      description: Creates a citizen, employee, or admin. Employees require an active department; citizen and admin department assignments are cleared.
+      responses:
+        "201": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /admin/users/{user}:
+    get:
+      tags: [Admin Management]
+      security:
+        - bearerAuth: []
+      summary: Show user
+      parameters:
+        - { name: user, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [Admin Management]
+      security:
+        - bearerAuth: []
+      summary: Update user
+      description: Maintains role-specific department rules when user roles change.
+      parameters:
+        - { name: user, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/ValidationError" }
   /admin/complaints/{complaint}:
     get:
       tags: [Admin Management]

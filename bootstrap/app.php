@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\CheckComplaintSlaBreaches;
+use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Console\Scheduling\Schedule;
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
+            'active.user' => EnsureUserIsActive::class,
             'role' => RoleMiddleware::class,
         ]);
     })

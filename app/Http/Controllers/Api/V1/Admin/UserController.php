@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Admin\ListUsersRequest;
 use App\Http\Requests\Api\V1\Admin\StoreUserRequest;
 use App\Http\Requests\Api\V1\Admin\UpdateUserRequest;
+use App\Http\Requests\Api\V1\Admin\UpdateUserStatusRequest;
 use App\Http\Resources\Api\V1\UserResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\User;
@@ -64,9 +65,18 @@ class UserController extends Controller
 
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
-        $user = $this->userService->update($user, $request->validated());
+        $user = $this->userService->update($user, $request->validated(), $request->user());
 
         return $this->successResponse('User updated successfully.', [
+            'user' => new UserResource($user),
+        ]);
+    }
+
+    public function updateStatus(UpdateUserStatusRequest $request, User $user): JsonResponse
+    {
+        $user = $this->userService->updateStatus($user, $request->boolean('is_active'), $request->user());
+
+        return $this->successResponse('User status updated successfully.', [
             'user' => new UserResource($user),
         ]);
     }

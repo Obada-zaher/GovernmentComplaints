@@ -180,16 +180,21 @@ class AdminComplaintManagementTest extends TestCase
         $this->assertSame(1, $complaint->assignments()->count());
     }
 
-    public function test_admin_cannot_assign_complaint_to_citizen(): void
+    public function test_admin_cannot_assign_complaint_to_a_citizen_or_admin(): void
     {
         $this->actingAsAdmin();
         $citizen = User::factory()->citizen()->create();
+        $otherAdmin = User::factory()->admin()->create();
         $complaint = Complaint::factory()->create();
 
         $this->patchJson('/api/v1/admin/complaints/'.$complaint->id.'/assign', [
             'assigned_employee_id' => $citizen->id,
         ])->assertUnprocessable()
             ->assertJsonPath('success', false);
+        $this->patchJson('/api/v1/admin/complaints/'.$complaint->id.'/assign', [
+            'assigned_employee_id' => $otherAdmin->id,
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['assigned_employee_id']);
     }
 
     public function test_admin_cannot_assign_to_employee_from_different_department(): void
@@ -199,6 +204,40 @@ class AdminComplaintManagementTest extends TestCase
         $otherDepartment = Department::factory()->create();
         $employee = User::factory()->employee()->create(['department_id' => $otherDepartment->id]);
         $complaint = Complaint::factory()->create(['department_id' => $department->id]);
+
+        $this->patchJson('/api/v1/admin/complaints/'.$complaint->id.'/assign', [
+            'assigned_employee_id' => $employee->id,
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['assigned_employee_id']);
+    }
+
+    public function test_admin_cannot_assign_an_inactive_or_departmentless_employee(): void
+    {
+        $this->actingAsAdmin();
+        $department = Department::factory()->create();
+        $complaint = Complaint::factory()->create(['department_id' => $department->id]);
+        $inactiveEmployee = User::factory()->employee()->create([
+            'department_id' => $department->id,
+            'is_active' => false,
+        ]);
+        $departmentlessEmployee = User::factory()->employee()->create(['department_id' => null]);
+
+        $this->patchJson('/api/v1/admin/complaints/'.$complaint->id.'/assign', [
+            'assigned_employee_id' => $inactiveEmployee->id,
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['assigned_employee_id']);
+        $this->patchJson('/api/v1/admin/complaints/'.$complaint->id.'/assign', [
+            'assigned_employee_id' => $departmentlessEmployee->id,
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['assigned_employee_id']);
+    }
+
+    public function test_admin_cannot_assign_an_employee_when_the_complaint_has_no_department(): void
+    {
+        $this->actingAsAdmin();
+        $department = Department::factory()->create();
+        $employee = User::factory()->employee()->create(['department_id' => $department->id]);
+        $complaint = Complaint::factory()->create(['department_id' => null]);
 
         $this->patchJson('/api/v1/admin/complaints/'.$complaint->id.'/assign', [
             'assigned_employee_id' => $employee->id,

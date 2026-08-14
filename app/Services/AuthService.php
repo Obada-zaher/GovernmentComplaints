@@ -41,8 +41,14 @@ class AuthService
             ->first();
     }
 
-    public function issueToken(User $user, ?string $deviceName = null): string
+    public function issueToken(User $user, ?string $deviceName = null): ?string
     {
+        $user->refresh();
+
+        if (! $user->is_active) {
+            return null;
+        }
+
         $user->forceFill(['last_login_at' => now()])->save();
 
         return $user->createToken($deviceName ?: 'api-token')->plainTextToken;

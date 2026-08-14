@@ -29,7 +29,7 @@ class UpdateUserRequest extends FormRequest
             'national_id' => ['sometimes', 'nullable', 'string', 'max:255', Rule::unique('users', 'national_id')->ignore($user)],
             'role' => ['sometimes', 'required', Rule::in(['citizen', 'employee', 'admin'])],
             'department_id' => ['sometimes', 'nullable', 'integer'],
-            'is_active' => ['sometimes', Rule::in([true, false, 1, 0, 'true', 'false'])],
+            'is_active' => ['missing'],
         ];
     }
 

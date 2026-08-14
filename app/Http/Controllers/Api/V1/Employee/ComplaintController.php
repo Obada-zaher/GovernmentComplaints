@@ -31,16 +31,26 @@ class ComplaintController extends Controller
         $complaints = Complaint::query()
             ->with(['citizen', 'department', 'category', 'priority', 'assignedEmployee'])
             ->when($scope === 'assigned_to_me', fn ($query) => $query->where('assigned_employee_id', $employee->id))
-            ->when($scope === 'my_department', fn ($query) => $query->where('department_id', $employee->department_id)->whereNull('assigned_employee_id'))
+            ->when($scope === 'my_department', function ($query) use ($employee): void {
+                if (! $employee->department_id) {
+                    $query->whereKey([]);
+
+                    return;
+                }
+
+                $query->where('department_id', $employee->department_id)->whereNull('assigned_employee_id');
+            })
             ->when($scope === 'all_accessible' || ! in_array($scope, ['assigned_to_me', 'my_department'], true), function ($query) use ($employee): void {
                 $query->where(function ($accessQuery) use ($employee): void {
-                    $accessQuery
-                        ->where('assigned_employee_id', $employee->id)
-                        ->orWhere(function ($departmentQuery) use ($employee): void {
+                    $accessQuery->where('assigned_employee_id', $employee->id);
+
+                    if ($employee->department_id) {
+                        $accessQuery->orWhere(function ($departmentQuery) use ($employee): void {
                             $departmentQuery
                                 ->where('department_id', $employee->department_id)
                                 ->whereNull('assigned_employee_id');
                         });
+                    }
                 });
             })
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->query('status')))

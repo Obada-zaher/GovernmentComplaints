@@ -103,9 +103,14 @@ class AuthController extends Controller
         }
 
         $this->authEventService->record('otp_verified', $user, $request, ['purpose' => $data['purpose']]);
+        $token = $this->authService->issueToken($user, $data['device_name'] ?? null);
+
+        if (! $token) {
+            return $this->errorResponse('User account is inactive.', [], 403);
+        }
 
         return $this->successResponse('Verification successful.', [
-            'token' => $this->authService->issueToken($user, $data['device_name'] ?? null),
+            'token' => $token,
             'token_type' => 'Bearer',
             'user' => new UserResource($user->fresh('department')),
         ]);

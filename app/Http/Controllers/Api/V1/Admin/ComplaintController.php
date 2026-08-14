@@ -76,15 +76,9 @@ class ComplaintController extends Controller
         $data = $request->validated();
         $employee = User::query()->findOrFail($data['assigned_employee_id']);
 
-        if ($employee->role !== 'employee') {
-            return $this->errorResponse('The selected user must be an employee.', [
-                'assigned_employee_id' => ['The selected user must be an employee.'],
-            ], 422);
-        }
-
-        if ($employee->department_id && $complaint->department_id && (int) $employee->department_id !== (int) $complaint->department_id) {
-            return $this->errorResponse('Employee department does not match complaint department.', [
-                'assigned_employee_id' => ['Employee department does not match complaint department.'],
+        if ($employee->role !== 'employee' || ! $employee->is_active || ! $employee->department_id || ! $complaint->department_id || (int) $employee->department_id !== (int) $complaint->department_id) {
+            return $this->errorResponse('The selected employee must be active and belong to the complaint department.', [
+                'assigned_employee_id' => ['The selected employee must be active and belong to the complaint department.'],
             ], 422);
         }
 

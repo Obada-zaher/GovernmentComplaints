@@ -107,6 +107,48 @@ class EmployeeComplaintProcessingTest extends TestCase
             ->assertJsonPath('success', false);
     }
 
+    public function test_employee_cannot_access_or_update_a_coworkers_assigned_complaint(): void
+    {
+        [$employee, $department, $category, $priority] = $this->actingAsEmployee();
+        $coworker = User::factory()->employee()->create(['department_id' => $department->id]);
+        $complaint = $this->createComplaint($department, $category, $priority, [
+            'assigned_employee_id' => $coworker->id,
+            'status' => 'assigned',
+        ]);
+
+        $this->getJson('/api/v1/employee/complaints')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.complaints');
+        $this->getJson('/api/v1/employee/complaints/'.$complaint->id)->assertForbidden();
+        $this->patchJson('/api/v1/employee/complaints/'.$complaint->id.'/status', [
+            'status' => 'in_progress',
+        ])->assertForbidden();
+    }
+
+    public function test_employee_without_a_department_only_sees_complaints_assigned_directly_to_them(): void
+    {
+        $employee = User::factory()->employee()->create(['department_id' => null]);
+        Sanctum::actingAs($employee);
+        $unassignedWithoutDepartment = Complaint::factory()->create([
+            'department_id' => null,
+            'assigned_employee_id' => null,
+        ]);
+        $assignedToEmployee = Complaint::factory()->create([
+            'department_id' => null,
+            'assigned_employee_id' => $employee->id,
+        ]);
+
+        $this->getJson('/api/v1/employee/complaints')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.complaints')
+            ->assertJsonPath('data.complaints.0.id', $assignedToEmployee->id);
+        $this->getJson('/api/v1/employee/complaints?scope=my_department')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.complaints');
+        $this->getJson('/api/v1/employee/complaints/'.$unassignedWithoutDepartment->id)
+            ->assertForbidden();
+    }
+
     public function test_employee_can_update_status_with_valid_transition(): void
     {
         [$employee, $department, $category, $priority] = $this->actingAsEmployee();

@@ -116,6 +116,24 @@ class AuthApiTest extends TestCase
         ]);
     }
 
+    public function test_inactive_user_cannot_log_in_or_receive_an_otp(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create([
+            'email' => 'inactive@example.com',
+            'password' => Hash::make('password'),
+            'is_active' => false,
+        ]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'login' => $user->email,
+            'password' => 'password',
+        ])->assertForbidden()
+            ->assertJsonPath('message', 'User account is inactive.');
+
+        $this->assertDatabaseMissing('otp_codes', ['user_id' => $user->id]);
+    }
+
     public function test_fixed_otp_mode_generates_a_hashed_fixed_code_for_registration(): void
     {
         Notification::fake();
@@ -158,6 +176,35 @@ class AuthApiTest extends TestCase
             'otp' => '000000',
             'purpose' => 'login',
         ])->assertOk();
+    }
+
+    public function test_otp_verification_does_not_issue_a_token_after_the_account_is_deactivated(): void
+    {
+        Notification::fake();
+        config()->set('otp.fixed_code_enabled', true);
+        $user = User::factory()->create([
+            'email' => 'inactive-before-verification@example.com',
+            'password' => Hash::make('password'),
+            'email_verified_at' => now(),
+            'is_active' => true,
+        ]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'login' => $user->email,
+            'password' => 'password',
+        ])->assertOk();
+
+        $user->forceFill(['is_active' => false])->save();
+
+        $this->postJson('/api/v1/auth/verify-otp', [
+            'user_id' => $user->id,
+            'otp' => '000000',
+            'purpose' => 'login',
+        ])->assertForbidden()
+            ->assertJsonPath('message', 'User account is inactive.')
+            ->assertJsonMissingPath('data.token');
+
+        $this->assertSame(0, $user->fresh()->tokens()->count());
     }
 
     public function test_fixed_otp_mode_rejects_an_incorrect_code(): void

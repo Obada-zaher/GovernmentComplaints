@@ -41,7 +41,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth-forgot-password');
         Route::post('reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth-reset-password');
 
-        Route::middleware('auth:sanctum')->group(function (): void {
+        Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
             Route::get('me', [AuthController::class, 'me']);
             Route::post('change-password', [AuthController::class, 'changePassword'])->middleware('throttle:auth-change-password');
             Route::post('logout', [AuthController::class, 'logout']);
@@ -50,7 +50,7 @@ Route::prefix('v1')->group(function (): void {
     });
 
     Route::prefix('notifications')
-        ->middleware('auth:sanctum')
+        ->middleware(['auth:sanctum', 'active.user'])
         ->group(function (): void {
             Route::get('/', [NotificationController::class, 'index']);
             Route::get('unread-count', [NotificationController::class, 'unreadCount']);
@@ -59,7 +59,7 @@ Route::prefix('v1')->group(function (): void {
             Route::delete('{notification}', [NotificationController::class, 'destroy']);
         });
 
-    Route::middleware('auth:sanctum')->group(function (): void {
+    Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
         Route::get('device-tokens', [UserDeviceTokenController::class, 'index']);
         Route::post('device-tokens', [UserDeviceTokenController::class, 'store']);
         Route::delete('device-tokens/{deviceToken}', [UserDeviceTokenController::class, 'destroy']);
@@ -69,13 +69,13 @@ Route::prefix('v1')->group(function (): void {
     });
 
     Route::prefix('classification')
-        ->middleware('auth:sanctum')
+        ->middleware(['auth:sanctum', 'active.user'])
         ->group(function (): void {
             Route::post('complaints/preview', [ComplaintClassificationController::class, 'preview']);
         });
 
     Route::prefix('citizen')
-        ->middleware(['auth:sanctum', 'role:citizen'])
+        ->middleware(['auth:sanctum', 'active.user', 'role:citizen'])
         ->group(function (): void {
             Route::get('ping', [RolePingController::class, 'citizen']);
             Route::get('complaints', [CitizenComplaintController::class, 'index']);
@@ -88,7 +88,7 @@ Route::prefix('v1')->group(function (): void {
         });
 
     Route::prefix('employee')
-        ->middleware(['auth:sanctum', 'role:employee'])
+        ->middleware(['auth:sanctum', 'active.user', 'role:employee'])
         ->group(function (): void {
             Route::get('ping', [RolePingController::class, 'employee']);
             Route::get('complaints', [EmployeeComplaintController::class, 'index']);
@@ -97,7 +97,7 @@ Route::prefix('v1')->group(function (): void {
         });
 
     Route::prefix('admin')
-        ->middleware(['auth:sanctum', 'role:admin'])
+        ->middleware(['auth:sanctum', 'active.user', 'role:admin'])
         ->group(function (): void {
             Route::get('ping', [RolePingController::class, 'admin']);
             Route::get('employees', [EmployeeController::class, 'index']);
@@ -105,6 +105,7 @@ Route::prefix('v1')->group(function (): void {
             Route::post('users', [UserController::class, 'store']);
             Route::get('users/{user}', [UserController::class, 'show']);
             Route::patch('users/{user}', [UserController::class, 'update']);
+            Route::patch('users/{user}/status', [UserController::class, 'updateStatus']);
             Route::get('complaints', [AdminComplaintController::class, 'index']);
             Route::get('complaints/{complaint}', [AdminComplaintController::class, 'show']);
             Route::patch('complaints/{complaint}/assign', [AdminComplaintController::class, 'assign']);

@@ -18,11 +18,7 @@ class ComplaintStatusHistoryResource extends JsonResource
             'to_status' => $this->to_status,
             'note' => $this->note,
             'duration_minutes' => $this->duration_minutes,
-            'changed_by' => $this->whenLoaded('changedBy', fn () => $this->changedBy ? [
-                'id' => $this->changedBy->id,
-                'name' => $this->changedBy->name,
-                'role' => $this->changedBy->role,
-            ] : null),
+            'changed_by' => $this->whenLoaded('changedBy', fn () => $this->changedBy?->name),
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

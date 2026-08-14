@@ -65,11 +65,35 @@ class EmployeeComplaintProcessingTest extends TestCase
     {
         [$employee, $department, $category, $priority] = $this->actingAsEmployee();
         $complaint = $this->createComplaint($department, $category, $priority, ['assigned_employee_id' => $employee->id]);
+        $complaint->citizen->forceFill(['name' => 'Citizen Detail User'])->save();
+        $employee->forceFill(['name' => 'Government Employee'])->save();
+        $complaint->attachments()->create([
+            'uploaded_by' => $complaint->citizen_id,
+            'original_name' => 'proof.jpg',
+            'file_name' => 'proof.jpg',
+            'file_path' => 'complaints/proof.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 100,
+            'disk' => 'public',
+        ]);
+        $complaint->statusHistories()->create([
+            'changed_by' => $employee->id,
+            'from_status' => 'submitted',
+            'to_status' => 'under_review',
+            'note' => 'Employee review',
+        ]);
 
-        $this->getJson('/api/v1/employee/complaints/'.$complaint->id)
+        $response = $this->getJson('/api/v1/employee/complaints/'.$complaint->id)
             ->assertOk()
             ->assertJsonPath('data.id', $complaint->id)
-            ->assertJsonStructure(['data' => ['citizen', 'timeline', 'assignments']]);
+            ->assertJsonStructure(['data' => ['citizen', 'timeline', 'assignments']])
+            ->assertJsonPath('data.attachments.0.uploaded_by', 'Citizen Detail User')
+            ->assertJsonPath('data.timeline.0.changed_by', 'Government Employee');
+
+        $this->assertIsString($response->json('data.attachments.0.uploaded_by'));
+        $this->assertIsNotArray($response->json('data.attachments.0.uploaded_by'));
+        $this->assertIsString($response->json('data.timeline.0.changed_by'));
+        $this->assertIsNotArray($response->json('data.timeline.0.changed_by'));
     }
 
     public function test_employee_cannot_show_inaccessible_complaint(): void

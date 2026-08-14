@@ -51,6 +51,16 @@ class AdminComplaintManagementTest extends TestCase
     {
         $this->actingAsAdmin();
         $complaint = Complaint::factory()->create();
+        $complaint->citizen->forceFill(['name' => 'Citizen Detail User'])->save();
+        $complaint->attachments()->create([
+            'uploaded_by' => $complaint->citizen_id,
+            'original_name' => 'proof.jpg',
+            'file_name' => 'proof.jpg',
+            'file_path' => 'complaints/proof.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 100,
+            'disk' => 'public',
+        ]);
         $complaint->statusHistories()->create([
             'changed_by' => $complaint->citizen_id,
             'from_status' => null,
@@ -58,11 +68,18 @@ class AdminComplaintManagementTest extends TestCase
             'note' => 'Complaint submitted by citizen',
         ]);
 
-        $this->getJson('/api/v1/admin/complaints/'.$complaint->id)
+        $response = $this->getJson('/api/v1/admin/complaints/'.$complaint->id)
             ->assertOk()
             ->assertJsonPath('data.id', $complaint->id)
             ->assertJsonStructure(['data' => ['citizen', 'timeline', 'assignments']])
-            ->assertJsonCount(1, 'data.timeline');
+            ->assertJsonCount(1, 'data.timeline')
+            ->assertJsonPath('data.attachments.0.uploaded_by', 'Citizen Detail User')
+            ->assertJsonPath('data.timeline.0.changed_by', 'Citizen Detail User');
+
+        $this->assertIsString($response->json('data.attachments.0.uploaded_by'));
+        $this->assertIsNotArray($response->json('data.attachments.0.uploaded_by'));
+        $this->assertIsString($response->json('data.timeline.0.changed_by'));
+        $this->assertIsNotArray($response->json('data.timeline.0.changed_by'));
     }
 
     public function test_admin_can_assign_complaint_to_employee(): void

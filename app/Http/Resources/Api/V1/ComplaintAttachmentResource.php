@@ -22,11 +22,7 @@ class ComplaintAttachmentResource extends JsonResource
             'mime_type' => $this->mime_type,
             'file_size' => $this->file_size,
             'disk' => $this->disk,
-            'uploaded_by' => $this->whenLoaded('uploadedBy', fn () => $this->uploadedBy ? [
-                'id' => $this->uploadedBy->id,
-                'name' => $this->uploadedBy->name,
-                'role' => $this->uploadedBy->role,
-            ] : null),
+            'uploaded_by' => $this->whenLoaded('uploadedBy', fn () => $this->uploadedBy?->name),
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

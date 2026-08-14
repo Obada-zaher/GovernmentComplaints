@@ -402,7 +402,8 @@ class CitizenComplaintApiTest extends TestCase
 
     public function test_citizen_can_view_complaint_with_attachments_and_timeline(): void
     {
-        $citizen = $this->actingAsCitizen();
+        $citizen = $this->actingAsCitizen()->forceFill(['name' => 'Citizen Detail User']);
+        $citizen->save();
         $complaint = Complaint::factory()->create(['citizen_id' => $citizen->id]);
         ComplaintAttachment::factory()->create(['complaint_id' => $complaint->id, 'uploaded_by' => $citizen->id]);
         $complaint->statusHistories()->create([
@@ -412,7 +413,7 @@ class CitizenComplaintApiTest extends TestCase
             'note' => 'Complaint submitted by citizen',
         ]);
 
-        $this->getJson('/api/v1/citizen/complaints/'.$complaint->id)
+        $response = $this->getJson('/api/v1/citizen/complaints/'.$complaint->id)
             ->assertOk()
             ->assertJsonPath('data.id', $complaint->id)
             ->assertJsonStructure([
@@ -423,7 +424,32 @@ class CitizenComplaintApiTest extends TestCase
                 ],
             ])
             ->assertJsonCount(1, 'data.attachments')
-            ->assertJsonCount(1, 'data.timeline');
+            ->assertJsonCount(1, 'data.timeline')
+            ->assertJsonPath('data.attachments.0.uploaded_by', 'Citizen Detail User')
+            ->assertJsonPath('data.timeline.0.changed_by', 'Citizen Detail User');
+
+        $this->assertIsString($response->json('data.attachments.0.uploaded_by'));
+        $this->assertIsNotArray($response->json('data.attachments.0.uploaded_by'));
+        $this->assertIsString($response->json('data.timeline.0.changed_by'));
+        $this->assertIsNotArray($response->json('data.timeline.0.changed_by'));
+    }
+
+    public function test_citizen_complaint_detail_returns_null_for_missing_attachment_and_timeline_users(): void
+    {
+        $citizen = $this->actingAsCitizen();
+        $complaint = Complaint::factory()->create(['citizen_id' => $citizen->id]);
+        ComplaintAttachment::factory()->create(['complaint_id' => $complaint->id, 'uploaded_by' => null]);
+        $complaint->statusHistories()->create([
+            'changed_by' => null,
+            'from_status' => null,
+            'to_status' => 'submitted',
+            'note' => 'System submission',
+        ]);
+
+        $this->getJson('/api/v1/citizen/complaints/'.$complaint->id)
+            ->assertOk()
+            ->assertJsonPath('data.attachments.0.uploaded_by', null)
+            ->assertJsonPath('data.timeline.0.changed_by', null);
     }
 
     public function test_citizen_can_add_attachment_to_own_complaint(): void

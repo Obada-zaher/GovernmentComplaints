@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Admin\ClassificationRuleController;
 use App\Http\Controllers\Api\V1\Admin\ComplaintCategoryController;
 use App\Http\Controllers\Api\V1\Admin\ComplaintController as AdminComplaintController;
 use App\Http\Controllers\Api\V1\Admin\DepartmentController;
+use App\Http\Controllers\Api\V1\Admin\EmployeeController;
 use App\Http\Controllers\Api\V1\Admin\NotificationDeliveryLogController;
 use App\Http\Controllers\Api\V1\Admin\PriorityController;
 use App\Http\Controllers\Api\V1\Admin\ReportController;
@@ -98,6 +99,7 @@ Route::prefix('v1')->group(function (): void {
         ->middleware(['auth:sanctum', 'role:admin'])
         ->group(function (): void {
             Route::get('ping', [RolePingController::class, 'admin']);
+            Route::get('employees', [EmployeeController::class, 'index']);
             Route::get('complaints', [AdminComplaintController::class, 'index']);
             Route::get('complaints/{complaint}', [AdminComplaintController::class, 'show']);
             Route::patch('complaints/{complaint}/assign', [AdminComplaintController::class, 'assign']);

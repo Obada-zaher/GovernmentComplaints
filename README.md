@@ -11,7 +11,7 @@ This repository is backend-only. It does not include frontend, mobile, Python AI
 - Role-based access for `citizen`, `employee`, and `admin`.
 - Public lookup APIs for departments, complaint categories, priorities, and statuses.
 - Citizen complaint creation, tracking, attachments, and offline sync.
-- Admin complaint review, assignment, department/category/priority changes, and lifecycle updates.
+- Admin employee listing, complaint review, assignment, department/category/priority changes, and lifecycle updates.
 - Employee complaint processing with timeline/status history.
 - SLA deadline calculation and breach detection command.
 - Database notifications, Mailtrap email notifications, push/SMS infrastructure, preferences, device tokens, and delivery logs.

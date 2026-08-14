@@ -9,12 +9,10 @@ use Illuminate\Support\Str;
 
 class AuthService
 {
-    public function __construct(private readonly OtpService $otpService)
-    {
-    }
+    public function __construct(private readonly OtpService $otpService) {}
 
     /**
-     * @param array{name: string, email: string, phone: string, national_id?: string|null, password: string} $data
+     * @param  array{name: string, email: string, phone: string, national_id?: string|null, password: string}  $data
      */
     public function register(array $data): User
     {

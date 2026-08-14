@@ -216,6 +216,11 @@ class CitizenComplaintApiTest extends TestCase
     public function test_citizen_can_upload_attachment_on_complaint_creation(): void
     {
         Storage::fake('public');
+        config([
+            'app.url' => 'https://api.example.test',
+            'filesystems.disks.public.url' => 'https://api.example.test/storage',
+            'gcms.attachments.disk' => 'public',
+        ]);
         $this->actingAsCitizen();
 
         $response = $this->post('/api/v1/citizen/complaints', [
@@ -227,10 +232,87 @@ class CitizenComplaintApiTest extends TestCase
         ], ['Accept' => 'application/json']);
 
         $response->assertCreated()
-            ->assertJsonCount(1, 'data.attachments');
+            ->assertJsonCount(1, 'data.attachments')
+            ->assertJsonPath('data.attachments.0.disk', 'public');
 
         $attachment = ComplaintAttachment::query()->firstOrFail();
+        $this->assertDatabaseHas('complaint_attachments', [
+            'id' => $attachment->id,
+            'complaint_id' => $response->json('data.id'),
+            'file_path' => $attachment->file_path,
+            'disk' => 'public',
+        ]);
         Storage::disk('public')->assertExists($attachment->file_path);
+
+        $attachmentUrl = $response->json('data.attachments.0.url');
+        $this->assertNotNull($attachmentUrl);
+        $this->assertSame(Storage::disk('public')->url($attachment->file_path), $attachmentUrl);
+
+        $this->getJson('/api/v1/citizen/complaints/'.$response->json('data.id'))
+            ->assertOk()
+            ->assertJsonPath('data.attachments.0.url', $attachmentUrl);
+    }
+
+    public function test_configured_attachment_disk_is_used_for_new_uploads(): void
+    {
+        Storage::fake('local');
+        config(['gcms.attachments.disk' => 'local']);
+        $this->actingAsCitizen();
+
+        $response = $this->post('/api/v1/citizen/complaints', [
+            'title' => 'Configured attachment disk',
+            'description' => 'The attachment should use the configured disk.',
+            'attachments' => [
+                UploadedFile::fake()->image('configured.jpg')->size(100),
+            ],
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        $attachment = ComplaintAttachment::query()->firstOrFail();
+
+        $this->assertSame('local', $attachment->disk);
+        Storage::disk('local')->assertExists($attachment->file_path);
+        $this->assertSame($attachment->disk, $response->json('data.attachments.0.disk'));
+    }
+
+    public function test_existing_public_attachment_uses_its_stored_disk_for_url_generation(): void
+    {
+        config([
+            'app.url' => 'https://api.example.test',
+            'filesystems.disks.public.url' => 'https://api.example.test/storage',
+            'gcms.attachments.disk' => 'local',
+        ]);
+        $citizen = $this->actingAsCitizen();
+        $complaint = Complaint::factory()->create(['citizen_id' => $citizen->id]);
+        $attachment = ComplaintAttachment::factory()->create([
+            'complaint_id' => $complaint->id,
+            'uploaded_by' => $citizen->id,
+            'file_path' => 'complaints/'.$complaint->id.'/existing.jpg',
+            'disk' => 'public',
+        ]);
+
+        $this->getJson('/api/v1/citizen/complaints/'.$complaint->id)
+            ->assertOk()
+            ->assertJsonPath('data.attachments.0.disk', 'public')
+            ->assertJsonPath('data.attachments.0.url', 'https://api.example.test/storage/'.$attachment->file_path);
+    }
+
+    public function test_s3_attachment_uses_its_stored_disk_for_url_generation(): void
+    {
+        Storage::fake('s3');
+        config(['gcms.attachments.disk' => 'public']);
+        $citizen = $this->actingAsCitizen();
+        $complaint = Complaint::factory()->create(['citizen_id' => $citizen->id]);
+        $attachment = ComplaintAttachment::factory()->create([
+            'complaint_id' => $complaint->id,
+            'uploaded_by' => $citizen->id,
+            'file_path' => 'complaints/'.$complaint->id.'/persistent.jpg',
+            'disk' => 's3',
+        ]);
+
+        $this->getJson('/api/v1/citizen/complaints/'.$complaint->id)
+            ->assertOk()
+            ->assertJsonPath('data.attachments.0.disk', 's3')
+            ->assertJsonPath('data.attachments.0.url', Storage::disk('s3')->url($attachment->file_path));
     }
 
     public function test_invalid_attachment_mime_is_rejected(): void
@@ -357,7 +439,12 @@ class CitizenComplaintApiTest extends TestCase
         ], ['Accept' => 'application/json']);
 
         $response->assertOk()
-            ->assertJsonCount(1, 'data.attachments');
+            ->assertJsonCount(1, 'data.attachments')
+            ->assertJsonPath('data.attachments.0.disk', 'public');
+
+        $attachment = ComplaintAttachment::query()->firstOrFail();
+        Storage::disk('public')->assertExists($attachment->file_path);
+        $this->assertNotNull($response->json('data.attachments.0.url'));
 
         $this->assertDatabaseHas('complaint_status_histories', [
             'complaint_id' => $complaint->id,

@@ -21,9 +21,10 @@ class ComplaintAttachmentService
 
     private function store(Complaint $complaint, User $uploadedBy, UploadedFile $file): void
     {
+        $disk = config('gcms.attachments.disk', 'public');
         $extension = $file->getClientOriginalExtension();
         $fileName = Str::uuid()->toString().($extension ? ".{$extension}" : '');
-        $path = $file->storeAs("complaints/{$complaint->id}", $fileName, 'public');
+        $path = $file->storeAs("complaints/{$complaint->id}", $fileName, $disk);
 
         $complaint->attachments()->create([
             'uploaded_by' => $uploadedBy->id,
@@ -32,7 +33,7 @@ class ComplaintAttachmentService
             'file_path' => $path,
             'mime_type' => $file->getClientMimeType(),
             'file_size' => $file->getSize(),
-            'disk' => 'public',
+            'disk' => $disk,
         ]);
     }
 }

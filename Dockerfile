@@ -26,6 +26,7 @@ RUN mkdir -p \
         storage/framework/cache \
         storage/framework/cache/data \
         storage/framework/sessions \
+        storage/app/public \
         storage/logs \
         bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache resources/views || true

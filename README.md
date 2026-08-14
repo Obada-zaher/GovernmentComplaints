@@ -89,6 +89,7 @@ During container startup the project runs:
 
 ```bash
 php artisan optimize:clear
+php artisan storage:link
 php artisan migrate --force
 php artisan db:seed --force
 ```
@@ -97,7 +98,22 @@ Deployment never uses `migrate:fresh`, `db:wipe`, or any command that deletes ex
 
 If a Render deployment exits with status 1, inspect the Render Logs for the failing startup command. Startup runs `php artisan migrate --force` and `php artisan db:seed --force`; it never runs `migrate:fresh`. For MySQL set `DB_CONNECTION=mysql`. For PostgreSQL set `DB_CONNECTION=pgsql` and ensure the Docker image includes the `pdo_pgsql` PHP extension.
 
-If Render reports `View path not found` or `Please provide a valid cache path`, the container is missing Laravel's view/cache directories. The Dockerfile and Docker entrypoint create `resources/views`, `storage/framework/views`, `storage/framework/cache/data`, `storage/framework/sessions`, and `bootstrap/cache` before Laravel commands run.
+If Render reports `View path not found` or `Please provide a valid cache path`, the container is missing Laravel's view/cache directories. The Dockerfile and Docker entrypoint create `resources/views`, `storage/framework/views`, `storage/framework/cache/data`, `storage/framework/sessions`, `storage/app/public`, and `bootstrap/cache` before Laravel commands run. The entrypoint also creates the public storage link idempotently, so files on the `public` disk are served from `/storage/...` while they exist in the container.
+
+Set `APP_URL=https://governmentcomplaints.onrender.com` in Render so public-disk attachment URLs use the deployed application URL. Render's container filesystem is not persistent across redeploys, so production deployments that need durable attachments should use S3 or a compatible object-storage service:
+
+```text
+COMPLAINT_ATTACHMENTS_DISK=s3
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_DEFAULT_REGION=...
+AWS_BUCKET=...
+AWS_URL=...
+AWS_ENDPOINT=...
+AWS_USE_PATH_STYLE_ENDPOINT=false
+```
+
+`AWS_URL` and `AWS_ENDPOINT` are optional for standard AWS S3 but are commonly needed by S3-compatible providers. Configure the bucket/provider to serve the URLs returned by its filesystem disk. Do not commit these values. Local development uses `COMPLAINT_ATTACHMENTS_DISK=public`; run `php artisan storage:link` once locally (the Render entrypoint does this automatically).
 
 After pushing to GitHub, deploy the updated application using:
 

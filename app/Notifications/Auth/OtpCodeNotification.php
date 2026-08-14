@@ -14,8 +14,7 @@ class OtpCodeNotification extends Notification
         private readonly string $otpCode,
         private readonly string $purpose,
         private readonly int $expiresInMinutes = 10,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<int, string>

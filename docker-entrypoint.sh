@@ -9,6 +9,7 @@ mkdir -p \
   storage/framework/cache \
   storage/framework/cache/data \
   storage/framework/sessions \
+  storage/app/public \
   storage/logs \
   bootstrap/cache
 
@@ -19,6 +20,14 @@ php artisan route:clear || true
 php artisan view:clear || true
 php artisan cache:clear || true
 php artisan optimize:clear || true
+
+php artisan storage:link || {
+  if [ -L public/storage ]; then
+    echo "Laravel public storage link already exists."
+  else
+    exit 1
+  fi
+}
 
 php artisan migrate --force
 

@@ -29,8 +29,7 @@ class AuthController extends Controller
         private readonly AuthService $authService,
         private readonly OtpService $otpService,
         private readonly AuthEventService $authEventService,
-    ) {
-    }
+    ) {}
 
     public function register(RegisterRequest $request): JsonResponse
     {

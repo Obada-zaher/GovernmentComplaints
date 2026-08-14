@@ -303,6 +303,23 @@ paths:
       description: Requires `role:admin`.
       responses:
         "200": { $ref: "#/components/responses/PaginatedSuccess" }
+  /admin/employees:
+    get:
+      tags: [Admin Management]
+      security:
+        - bearerAuth: []
+      summary: List government employees
+      description: Requires `auth:sanctum` and `role:admin`. Returns only users whose role is `employee`, with their department when assigned.
+      parameters:
+        - { name: search, in: query, description: Search employee name, email, or phone., schema: { type: string } }
+        - { name: department_id, in: query, description: Filter by department., schema: { type: integer } }
+        - { name: is_active, in: query, description: Filter by active status., schema: { type: boolean } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: per_page, in: query, description: Page size (maximum 100)., schema: { type: integer, minimum: 1, maximum: 100, default: 15 } }
+      responses:
+        "200": { $ref: "#/components/responses/PaginatedSuccess" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
   /admin/complaints/{complaint}:
     get:
       tags: [Admin Management]

@@ -17,9 +17,7 @@ class ComplaintController extends Controller
 {
     use ApiResponse;
 
-    public function __construct(private readonly ComplaintService $complaintService)
-    {
-    }
+    public function __construct(private readonly ComplaintService $complaintService) {}
 
     public function index(Request $request): JsonResponse
     {

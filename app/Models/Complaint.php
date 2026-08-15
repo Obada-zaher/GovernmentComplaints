@@ -91,6 +91,11 @@ class Complaint extends Model
         return $this->hasMany(ComplaintAssignment::class);
     }
 
+    public function informationRequests(): HasMany
+    {
+        return $this->hasMany(ComplaintInformationRequest::class);
+    }
+
     public function notifications(): HasMany
     {
         return $this->hasMany(UserNotification::class);

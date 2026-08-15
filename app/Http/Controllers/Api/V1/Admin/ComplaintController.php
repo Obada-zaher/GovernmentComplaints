@@ -201,12 +201,12 @@ class ComplaintController extends Controller
         $data = $request->validated();
         $complaint = $this->statusService->updateStatus($complaint, $request->user(), $data['status'], $data['note'] ?? null);
 
-        $this->notifyStatusChangedByAdmin($complaint, $data['status']);
+        $this->notifyStatusChangedByAdmin($complaint, $data['status'], $data['note'] ?? null);
 
         return $this->successResponse('Complaint status updated successfully.', new ComplaintResource($this->loadComplaint($complaint)));
     }
 
-    private function notifyStatusChangedByAdmin(Complaint $complaint, string $status): void
+    private function notifyStatusChangedByAdmin(Complaint $complaint, string $status, ?string $note = null): void
     {
         $citizenType = match ($status) {
             'resolved' => NotificationService::TYPE_COMPLAINT_RESOLVED,
@@ -214,12 +214,19 @@ class ComplaintController extends Controller
             default => NotificationService::TYPE_COMPLAINT_STATUS_UPDATED,
         };
 
+        $title = $status === 'waiting_citizen'
+            ? 'Additional information is required'
+            : $this->statusNotificationTitle($status);
+        $body = $status === 'waiting_citizen'
+            ? "Additional information is required for complaint {$complaint->complaint_number}: {$note}"
+            : "Complaint {$complaint->complaint_number} status is now {$status}.";
+
         $this->notificationService->notifyUser(
             $complaint->citizen,
             $citizenType,
             $complaint,
-            $this->statusNotificationTitle($status),
-            "Complaint {$complaint->complaint_number} status is now {$status}.",
+            $title,
+            $body,
         );
 
         if ($complaint->assignedEmployee) {
@@ -228,7 +235,7 @@ class ComplaintController extends Controller
                 NotificationService::TYPE_COMPLAINT_STATUS_UPDATED,
                 $complaint,
                 'Complaint status updated',
-                "Complaint {$complaint->complaint_number} status is now {$status}.",
+                $body,
             );
         }
     }

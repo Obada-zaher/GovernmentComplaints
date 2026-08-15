@@ -7,6 +7,7 @@ use App\Models\ComplaintCategory;
 use App\Models\Priority;
 use App\Models\User;
 use App\Services\Classification\ComplaintClassificationService;
+use App\Services\Complaints\ComplaintInformationRequestService;
 use App\Services\Notifications\NotificationService;
 use App\Services\Sla\SlaDeadlineService;
 use Illuminate\Http\UploadedFile;
@@ -21,6 +22,7 @@ class ComplaintService
         private readonly SlaDeadlineService $slaDeadlineService,
         private readonly NotificationService $notificationService,
         private readonly ComplaintClassificationService $classificationService,
+        private readonly ComplaintInformationRequestService $informationRequestService,
     ) {}
 
     /**
@@ -109,8 +111,20 @@ class ComplaintService
      */
     public function addAttachments(Complaint $complaint, User $citizen, array $files): Complaint
     {
-        return DB::transaction(function () use ($complaint, $citizen, $files): Complaint {
+        [$complaint, $firstInformationResponse] = DB::transaction(function () use ($complaint, $citizen, $files): array {
+            $complaint = Complaint::query()->lockForUpdate()->findOrFail($complaint->id);
+
+            if ((int) $complaint->citizen_id !== (int) $citizen->id) {
+                throw ValidationException::withMessages([
+                    'complaint' => ['You cannot add attachments to this complaint.'],
+                ]);
+            }
+
             $this->attachmentService->storeMany($complaint, $citizen, $files);
+
+            $firstInformationResponse = $complaint->status === 'waiting_citizen'
+                ? $this->informationRequestService->markCitizenResponse($complaint)
+                : false;
 
             $complaint->statusHistories()->create([
                 'changed_by' => $citizen->id,
@@ -119,15 +133,27 @@ class ComplaintService
                 'note' => 'Citizen added attachments',
             ]);
 
-            return $complaint->fresh([
+            return [$complaint->fresh([
                 'department',
                 'category',
                 'priority',
                 'assignedEmployee',
                 'attachments',
                 'statusHistories.changedBy',
-            ]);
+            ]), $firstInformationResponse];
         });
+
+        if ($firstInformationResponse) {
+            $this->notificationService->notifyUser(
+                $complaint->assignedEmployee,
+                NotificationService::TYPE_COMPLAINT_STATUS_UPDATED,
+                $complaint,
+                'Citizen provided additional information',
+                "The citizen provided the requested information for complaint {$complaint->complaint_number}.",
+            );
+        }
+
+        return $complaint;
     }
 
     /**

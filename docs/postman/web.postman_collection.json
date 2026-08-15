@@ -1976,7 +1976,7 @@
                                 "status"
                             ]
                         },
-                        "description": "Purpose: Update complaint status as admin.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "description": "Purpose: Update complaint status as admin. To request additional information, set status to waiting_citizen from in_progress and provide a non-blank note; the citizen upload keeps the complaint waiting until an employee explicitly resumes or resolves it.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
                         "auth": {
                             "type": "bearer",
                             "bearer": [
@@ -2136,7 +2136,7 @@
                                 "status"
                             ]
                         },
-                        "description": "Purpose: Update status for an accessible complaint.\nRequired role: employee\nRequired token: {{employee_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "description": "Purpose: Update status for an accessible complaint. To request additional information, set status to waiting_citizen from in_progress and provide a non-blank note. After the citizen uploads evidence, explicitly choose in_progress or resolved.\nRequired role: employee\nRequired token: {{employee_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
                         "auth": {
                             "type": "bearer",
                             "bearer": [

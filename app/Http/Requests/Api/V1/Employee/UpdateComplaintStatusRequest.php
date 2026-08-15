@@ -12,6 +12,13 @@ class UpdateComplaintStatusRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->input('status') === 'waiting_citizen' && is_string($this->input('note'))) {
+            $this->merge(['note' => trim($this->input('note'))]);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -25,7 +32,7 @@ class UpdateComplaintStatusRequest extends FormRequest
                 'resolved',
                 'escalated',
             ])],
-            'note' => ['nullable', 'string', 'max:1000'],
+            'note' => [Rule::requiredIf($this->input('status') === 'waiting_citizen'), 'nullable', 'string', 'max:1000'],
         ];
     }
 }

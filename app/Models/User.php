@@ -88,6 +88,11 @@ class User extends Authenticatable
         return $this->hasMany(ComplaintStatusHistory::class, 'changed_by');
     }
 
+    public function requestedInformationRequests(): HasMany
+    {
+        return $this->hasMany(ComplaintInformationRequest::class, 'requested_by');
+    }
+
     public function notifications(): HasMany
     {
         return $this->hasMany(UserNotification::class);

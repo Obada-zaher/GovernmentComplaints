@@ -9,6 +9,8 @@ use Illuminate\Validation\ValidationException;
 
 class ComplaintStatusService
 {
+    public function __construct(private readonly ComplaintInformationRequestService $informationRequestService) {}
+
     /**
      * @var array<string, array<int, string>>
      */
@@ -44,6 +46,22 @@ class ComplaintStatusService
 
             $this->ensureAssigneeForStatus($complaint, $toStatus);
 
+            if ($toStatus === 'waiting_citizen') {
+                $message = trim((string) $note);
+
+                if ($message === '') {
+                    throw ValidationException::withMessages([
+                        'note' => ['A note is required when requesting additional information from the citizen.'],
+                    ]);
+                }
+
+                $this->informationRequestService->createPending($complaint, $changedBy, $message);
+            }
+
+            if ($fromStatus === 'waiting_citizen' && in_array($toStatus, ['in_progress', 'resolved'], true)) {
+                $this->informationRequestService->completeAfterCitizenResponse($complaint);
+            }
+
             $complaint->forceFill([
                 'status' => $toStatus,
                 'first_response_at' => $complaint->first_response_at ?? now(),
@@ -77,9 +95,22 @@ class ComplaintStatusService
 
     private function ensureAssigneeForStatus(Complaint $complaint, string $toStatus): void
     {
-        if (in_array($toStatus, ['assigned', 'in_progress', 'waiting_citizen'], true) && ! $complaint->assigned_employee_id) {
+        if (! in_array($toStatus, ['assigned', 'in_progress', 'waiting_citizen'], true)) {
+            return;
+        }
+
+        $hasValidAssignee = $complaint->assigned_employee_id
+            && User::query()
+                ->whereKey($complaint->assigned_employee_id)
+                ->where('role', 'employee')
+                ->where('is_active', true)
+                ->whereNotNull('department_id')
+                ->where('department_id', $complaint->department_id)
+                ->exists();
+
+        if (! $hasValidAssignee) {
             throw ValidationException::withMessages([
-                'assigned_employee_id' => ["A complaint in {$toStatus} status must have an assigned employee."],
+                'assigned_employee_id' => ["A complaint in {$toStatus} status must have a valid assigned employee."],
             ]);
         }
     }

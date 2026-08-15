@@ -85,6 +85,8 @@ Use the general user update endpoint for safe profile, role, and department chan
 
 Complaint assignment requires an active employee with a department matching the complaint department. A submitted complaint must first move to `under_review`; terminal complaints cannot be assigned. Employees can access complaints assigned to themselves and unassigned complaints in their own department, but never coworker assignments or other departments' complaints.
 
+An assigned employee or admin can move an `in_progress` complaint to `waiting_citizen` using the existing status endpoint with a non-blank `note`. This creates an internal information request. Citizen attachment uploads mark that request as responded but leave the complaint in `waiting_citizen`; an authorized employee must explicitly resume or resolve it.
+
 ## Frontend Integration Order
 
 1. Auth and OTP.

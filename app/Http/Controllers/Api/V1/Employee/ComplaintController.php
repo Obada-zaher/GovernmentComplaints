@@ -122,23 +122,30 @@ class ComplaintController extends Controller
             return $this->statusService->updateStatus($complaint, $employee, $data['status'], $data['note'] ?? null);
         });
 
-        $this->notifyStatusChangedByEmployee($complaint, $data['status']);
+        $this->notifyStatusChangedByEmployee($complaint, $data['status'], $data['note'] ?? null);
 
         return $this->successResponse('Complaint status updated successfully.', new ComplaintResource($this->loadComplaint($complaint)));
     }
 
-    private function notifyStatusChangedByEmployee(Complaint $complaint, string $status): void
+    private function notifyStatusChangedByEmployee(Complaint $complaint, string $status, ?string $note = null): void
     {
         $citizenType = $status === 'resolved'
             ? NotificationService::TYPE_COMPLAINT_RESOLVED
             : NotificationService::TYPE_COMPLAINT_STATUS_UPDATED;
 
+        $title = $status === 'waiting_citizen'
+            ? 'Additional information is required'
+            : ($status === 'resolved' ? 'Your complaint was resolved' : 'Complaint status updated');
+        $body = $status === 'waiting_citizen'
+            ? "Additional information is required for complaint {$complaint->complaint_number}: {$note}"
+            : "Complaint {$complaint->complaint_number} status is now {$status}.";
+
         $this->notificationService->notifyUser(
             $complaint->citizen,
             $citizenType,
             $complaint,
-            $status === 'resolved' ? 'Your complaint was resolved' : 'Complaint status updated',
-            "Complaint {$complaint->complaint_number} status is now {$status}.",
+            $title,
+            $body,
         );
 
         if ($status === 'escalated') {

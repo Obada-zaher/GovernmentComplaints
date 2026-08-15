@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Complaint;
+use App\Models\Department;
 use App\Models\NotificationPreference;
 use App\Models\User;
 use App\Models\UserDeviceToken;
@@ -114,9 +115,11 @@ class SyncQueueDemoModeTest extends TestCase
         ]);
         $admin = User::factory()->admin()->create();
         $citizen = User::factory()->citizen()->create();
-        $employee = User::factory()->employee()->create();
+        $department = Department::factory()->create();
+        $employee = User::factory()->employee()->create(['department_id' => $department->id]);
         $complaint = Complaint::factory()->create([
             'citizen_id' => $citizen->id,
+            'department_id' => $department->id,
             'assigned_employee_id' => $employee->id,
             'status' => 'assigned',
         ]);

@@ -27,6 +27,16 @@ Web team imports:
 - `shared.postman_collection.json`
 - `web.postman_collection.json`
 
+## Web Admin User Management
+
+The web collection's **Admin Management → Admin User Management** folder contains the admin-only user APIs. Authenticate first using the `admin_token` variable, then use the captured `user_id`, `employee_id`, and `department_id` variables in later requests.
+
+- Employees must use an existing active `department_id`.
+- Citizens and admins do not have department assignments.
+- `PATCH /admin/users/{{user_id}}` updates safe profile, role, or department fields only. Do not send `is_active` there; it returns `422`.
+- Use `PATCH /admin/users/{{user_id}}/status` to deactivate or reactivate an account. Deactivation revokes all Sanctum tokens; reactivation does not restore them.
+- `GET /admin/employees` remains the employee-only lookup for complaint assignment. The target employee must be active and in the complaint's department.
+
 ## OTP Flow
 
 1. Run login or register.
@@ -56,4 +66,4 @@ Replace `base_url` with the deployed backend API URL.
 
 ## Security
 
-Do not commit real tokens, OTPs, passwords, production URLs, or production secrets.
+Do not commit real tokens, OTPs, production URLs, or production secrets. The bundled credential examples are local/demo placeholders only.

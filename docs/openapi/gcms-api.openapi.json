@@ -3,7 +3,7 @@
   "info": {
     "title": "Government Complaint Management System API",
     "version": "1.0.0",
-    "description": "Laravel REST API for the Government Complaint Management System. See gcms-api.openapi.yaml for detailed operation notes and examples."
+    "description": "Laravel REST API for a Government Complaint Management System. All application endpoints are under `/api/v1` and use the shared success/error envelope. Protected endpoints require a valid Sanctum bearer token and an active account. An authenticated inactive account is rejected with `403` and `Your account is inactive.`; after administrative deactivation, revoked tokens can instead return `401` because the token no longer exists."
   },
   "servers": [
     {
@@ -49,15 +49,16 @@
     "/citizen/offline/complaints/sync": { "post": { "tags": ["Citizen Complaints"], "summary": "Sync offline complaint", "responses": { "200": { "$ref": "#/components/responses/Success" }, "201": { "$ref": "#/components/responses/Success" } } } },
     "/citizen/offline/submissions": { "get": { "tags": ["Citizen Complaints"], "summary": "List offline submissions", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } } },
     "/citizen/offline/submissions/{offlineSubmission}": { "get": { "tags": ["Citizen Complaints"], "summary": "Show offline submission", "responses": { "200": { "$ref": "#/components/responses/Success" }, "403": { "$ref": "#/components/responses/Error" } } } },
-    "/employee/complaints": { "get": { "tags": ["Employee Complaints"], "summary": "List accessible complaints", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } } },
+    "/employee/complaints": { "get": { "tags": ["Employee Complaints"], "summary": "Employee lists assigned or department-accessible complaints", "description": "Requires `auth:sanctum`, an active account, and `role:employee`. Employees see complaints assigned directly to themselves and unassigned complaints in their own department. They cannot see complaints in another department or complaints assigned to a coworker, including one in the same department.", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } } },
     "/employee/complaints/{complaint}": { "get": { "tags": ["Employee Complaints"], "summary": "Show accessible complaint", "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
     "/employee/complaints/{complaint}/status": { "patch": { "tags": ["Employee Complaints"], "summary": "Update status", "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
     "/admin/complaints": { "get": { "tags": ["Admin Management"], "summary": "List all complaints", "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" } } } },
-    "/admin/employees": { "get": { "tags": ["Admin Management"], "security": [{ "bearerAuth": [] }], "summary": "List government employees", "description": "Requires `auth:sanctum` and `role:admin`. Returns only users whose role is `employee`, with their department when assigned.", "parameters": [{ "name": "search", "in": "query", "description": "Search employee name, email, or phone.", "schema": { "type": "string" } }, { "name": "department_id", "in": "query", "description": "Filter by department.", "schema": { "type": "integer" } }, { "name": "is_active", "in": "query", "description": "Filter by active status.", "schema": { "type": "boolean" } }, { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } }, { "name": "per_page", "in": "query", "description": "Page size (maximum 100).", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 15 } }], "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" } } } },
-    "/admin/users": { "get": { "tags": ["Admin Management"], "security": [{ "bearerAuth": [] }], "summary": "List users", "description": "Requires `auth:sanctum` and `role:admin`. Returns citizens, employees, and admins.", "parameters": [{ "name": "search", "in": "query", "schema": { "type": "string" } }, { "name": "role", "in": "query", "schema": { "type": "string", "enum": ["citizen", "employee", "admin"] } }, { "name": "department_id", "in": "query", "schema": { "type": "integer" } }, { "name": "is_active", "in": "query", "schema": { "type": "boolean" } }, { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } }, { "name": "per_page", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 15 } }], "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" } } }, "post": { "tags": ["Admin Management"], "security": [{ "bearerAuth": [] }], "summary": "Create user", "description": "Creates a citizen, employee, or admin. Employees require an active department; citizen and admin department assignments are cleared.", "responses": { "201": { "$ref": "#/components/responses/Success" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/ValidationError" } } } },
-    "/admin/users/{user}": { "get": { "tags": ["Admin Management"], "security": [{ "bearerAuth": [] }], "summary": "Show user", "parameters": [{ "name": "user", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "$ref": "#/components/responses/Success" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" } } }, "patch": { "tags": ["Admin Management"], "security": [{ "bearerAuth": [] }], "summary": "Update user", "description": "Maintains role-specific department rules when user roles change.", "parameters": [{ "name": "user", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "$ref": "#/components/responses/Success" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/ValidationError" } } } },
+    "/admin/employees": { "get": { "tags": ["Admin Management"], "security": [{ "bearerAuth": [] }], "summary": "List government employees", "description": "Requires `auth:sanctum`, an active account, and `role:admin`. Returns only users whose role is `employee`, with their department when assigned. This employee-only lookup remains available for complaint assignment; `/admin/users` lists all roles.", "parameters": [{ "name": "search", "in": "query", "description": "Search employee name, email, or phone.", "schema": { "type": "string" } }, { "name": "department_id", "in": "query", "description": "Filter by department.", "schema": { "type": "integer" } }, { "name": "is_active", "in": "query", "description": "Filter by active status.", "schema": { "type": "boolean" } }, { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } }, { "name": "per_page", "in": "query", "description": "Page size (maximum 100).", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 15 } }], "responses": { "200": { "$ref": "#/components/responses/PaginatedSuccess" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" } } } },
+    "/admin/users": { "get": { "tags": ["Admin Management"], "security": [{ "bearerAuth": [] }], "summary": "List users", "description": "Requires `auth:sanctum`, an active account, and `role:admin`. Returns citizens, employees, and admins. `is_active` is a list filter only; use the dedicated status endpoint to change an account status.", "parameters": [{ "name": "search", "in": "query", "schema": { "type": "string" } }, { "name": "role", "in": "query", "schema": { "type": "string", "enum": ["citizen", "employee", "admin"] } }, { "name": "department_id", "in": "query", "schema": { "type": "integer" } }, { "name": "is_active", "in": "query", "schema": { "type": "boolean" } }, { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } }, { "name": "per_page", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 15 } }], "responses": { "200": { "description": "Paginated safe user list.", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessEnvelope" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/UsersData" } } }] } } } }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" } } }, "post": { "tags": ["Admin Management"], "security": [{ "bearerAuth": [] }], "summary": "Create user", "description": "Creates a citizen, employee, or admin. An employee requires an existing active department. Citizen and admin department assignments are cleared. Passwords are accepted but never returned.", "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreUserRequest" } } } }, "responses": { "201": { "$ref": "#/components/responses/Success" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/ValidationError" } } } },
+    "/admin/users/{user}": { "get": { "tags": ["Admin Management"], "security": [{ "bearerAuth": [] }], "summary": "Show user", "parameters": [{ "name": "user", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Safe user details.", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessEnvelope" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/UserData" } } }] } } } }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" } } }, "patch": { "tags": ["Admin Management"], "security": [{ "bearerAuth": [] }], "summary": "Update user", "description": "Updates safe profile, role, and department fields. An employee requires an active department; citizen and admin department assignments are cleared. Account status is not editable here: supplying `is_active` returns `422`. Use `PATCH /admin/users/{user}/status` instead. An admin cannot change their own role away from admin, and the final active admin cannot be demoted.", "parameters": [{ "name": "user", "in": "path", "required": true, "schema": { "type": "integer" } }], "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateUserRequest" } } } }, "responses": { "200": { "description": "Safe updated user.", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessEnvelope" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/UserData" } } }] } } } }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/ValidationError" } } } },
+    "/admin/users/{user}/status": { "patch": { "tags": ["Admin Management"], "security": [{ "bearerAuth": [] }], "summary": "Activate or deactivate a user", "description": "Requires `auth:sanctum`, an active account, and `role:admin`. `is_active=false` deactivates the target and revokes every Sanctum token. `is_active=true` reactivates the target but does not restore deleted tokens, so the user must authenticate again. An admin cannot deactivate themselves and the final active admin cannot be deactivated.", "parameters": [{ "name": "user", "in": "path", "required": true, "schema": { "type": "integer" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateUserStatusRequest" } } } }, "responses": { "200": { "description": "Safe user with updated status.", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessEnvelope" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/UserData" } } }] } } } }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/ValidationError" } } } },
     "/admin/complaints/{complaint}": { "get": { "tags": ["Admin Management"], "summary": "Show complaint", "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
-    "/admin/complaints/{complaint}/assign": { "patch": { "tags": ["Admin Management"], "summary": "Assign complaint", "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
+    "/admin/complaints/{complaint}/assign": { "patch": { "tags": ["Admin Management"], "summary": "Assign complaint to employee", "description": "Requires an active admin. The selected user must be an active employee with a department that matches the complaint department. A citizen, admin, inactive employee, department-less employee, cross-department employee, or complaint without a department is rejected with `422` under `assigned_employee_id`.", "security": [{ "bearerAuth": [] }], "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "requestBody": { "content": { "application/json": { "schema": { "type": "object", "required": ["assigned_employee_id"], "properties": { "assigned_employee_id": { "type": "integer", "example": 2 }, "note": { "type": "string" } } } } } }, "responses": { "200": { "$ref": "#/components/responses/Success" }, "401": { "$ref": "#/components/responses/Error" }, "403": { "$ref": "#/components/responses/Error" }, "422": { "$ref": "#/components/responses/ValidationError" } } } },
     "/admin/complaints/{complaint}/department": { "patch": { "tags": ["Admin Management"], "summary": "Change complaint department", "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
     "/admin/complaints/{complaint}/priority": { "patch": { "tags": ["Admin Management"], "summary": "Change complaint priority", "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
     "/admin/complaints/{complaint}/status": { "patch": { "tags": ["Admin Management"], "summary": "Admin update status", "parameters": [{ "$ref": "#/components/parameters/ComplaintId" }], "responses": { "200": { "$ref": "#/components/responses/Success" } } } },
@@ -162,6 +163,76 @@
           "message": { "type": "string" },
           "errors": { "type": "object" }
         }
+      },
+      "DepartmentSummary": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "name": { "type": "string", "example": "Health" },
+          "code": { "type": "string", "example": "health" }
+        }
+      },
+      "User": {
+        "type": "object",
+        "description": "Safe UserResource representation. Passwords, remember tokens, OTP data, and Sanctum tokens are never returned.",
+        "required": ["id", "name", "email", "phone", "role"],
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "name": { "type": "string", "example": "Health Employee" },
+          "email": { "type": "string", "format": "email", "example": "health.employee@example.com" },
+          "phone": { "type": "string", "example": "0999000101" },
+          "national_id": { "type": "string", "nullable": true, "example": "EMP-1001" },
+          "role": { "type": "string", "enum": ["citizen", "employee", "admin"], "example": "employee" },
+          "department": { "$ref": "#/components/schemas/DepartmentSummary" },
+          "is_active": { "type": "boolean", "example": true },
+          "phone_verified_at": { "type": "string", "format": "date-time", "nullable": true },
+          "last_login_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "UserData": {
+        "type": "object",
+        "required": ["user"],
+        "properties": { "user": { "$ref": "#/components/schemas/User" } }
+      },
+      "UsersData": {
+        "type": "object",
+        "required": ["users"],
+        "properties": {
+          "users": { "type": "array", "items": { "$ref": "#/components/schemas/User" } }
+        }
+      },
+      "StoreUserRequest": {
+        "type": "object",
+        "required": ["name", "email", "phone", "password", "password_confirmation", "role"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 255, "example": "Health Employee" },
+          "email": { "type": "string", "format": "email", "maxLength": 255, "example": "health.employee@example.com" },
+          "phone": { "type": "string", "maxLength": 255, "example": "0999000101" },
+          "national_id": { "type": "string", "nullable": true, "maxLength": 255, "example": "EMP-1001" },
+          "password": { "type": "string", "format": "password", "minLength": 8, "example": "password" },
+          "password_confirmation": { "type": "string", "format": "password", "minLength": 8, "example": "password" },
+          "role": { "type": "string", "enum": ["citizen", "employee", "admin"], "example": "employee" },
+          "department_id": { "type": "integer", "nullable": true, "example": 1, "description": "Required for role employee and must reference an active department. Cleared for citizen and admin." },
+          "is_active": { "type": "boolean", "default": true, "example": true }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "description": "Any subset of these safe fields may be supplied. `is_active` is intentionally prohibited; use UpdateUserStatusRequest.",
+        "properties": {
+          "name": { "type": "string", "maxLength": 255, "example": "Updated Employee" },
+          "email": { "type": "string", "format": "email", "maxLength": 255 },
+          "phone": { "type": "string", "maxLength": 255 },
+          "national_id": { "type": "string", "nullable": true, "maxLength": 255 },
+          "role": { "type": "string", "enum": ["citizen", "employee", "admin"] },
+          "department_id": { "type": "integer", "nullable": true, "description": "Required with an active department for employees; cleared for citizens and admins." }
+        }
+      },
+      "UpdateUserStatusRequest": {
+        "type": "object",
+        "required": ["is_active"],
+        "properties": { "is_active": { "type": "boolean", "example": false } }
       }
     }
   }

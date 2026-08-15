@@ -68,6 +68,23 @@ Admin APIs:
 - View reports and analytics.
 - View notification delivery logs.
 
+## Admin User Management
+
+Citizens can self-register through `POST /api/v1/auth/register`; public registration always creates a citizen. Admins can separately provision and manage citizens, employees, and admins:
+
+- `GET /api/v1/admin/users`
+- `POST /api/v1/admin/users`
+- `GET /api/v1/admin/users/{user}`
+- `PATCH /api/v1/admin/users/{user}`
+- `PATCH /api/v1/admin/users/{user}/status`
+- `GET /api/v1/admin/employees`
+
+Employees require an active department. Citizens and admins are system-wide and have no department assignment. `GET /admin/users` lists every role; `GET /admin/employees` is the employee-only lookup used by the complaint-assignment UI.
+
+Use the general user update endpoint for safe profile, role, and department changes only. It rejects `is_active`; account lifecycle changes must use `/admin/users/{user}/status`. Deactivation revokes every Sanctum token, and reactivation does not restore old tokens, so the user must authenticate again. Inactive accounts cannot access protected APIs. Admins cannot deactivate themselves or demote their own role, and the final active admin cannot be deactivated or demoted.
+
+Complaint assignment requires an active employee with a department matching the complaint department. Employees can access complaints assigned to themselves and unassigned complaints in their own department, but never coworker assignments or other departments' complaints.
+
 ## Frontend Integration Order
 
 1. Auth and OTP.
@@ -94,7 +111,7 @@ List endpoints return pagination metadata in `meta`, typically:
 }
 ```
 
-Use `per_page` where supported. The API caps page size to safe limits.
+Use `per_page` where supported. Admin user and employee lists cap `per_page` at 100.
 
 ## File Uploads
 
@@ -116,7 +133,9 @@ Maximum file size is 5120 KB per file.
 Postman collections:
 
 ```text
-docs/postman/collections/
+docs/postman/shared.postman_collection.json
+docs/postman/mobile.postman_collection.json
+docs/postman/web.postman_collection.json
 ```
 
 OpenAPI specification:

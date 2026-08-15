@@ -86,7 +86,7 @@ class DemoUsersSeederTest extends TestCase
 
         $this->assertSame($firstUserCount, User::query()->count());
         $this->assertSame($firstComplaintCount, Complaint::query()->count());
-        $this->assertSame(9, Complaint::query()->count());
+        $this->assertSame(50, Complaint::query()->count());
         $this->assertSame('Manual User', $unrelatedUser->fresh()->name);
         $this->assertSame('0999999999', $unrelatedUser->fresh()->phone);
         $this->assertSame('99999999999', $unrelatedUser->fresh()->national_id);

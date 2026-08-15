@@ -56,7 +56,7 @@ class AcademicDeliveryReadinessTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'admin@gcms.test', 'role' => 'admin']);
         $this->assertDatabaseHas('users', ['email' => 'employee@gcms.test', 'role' => 'employee']);
         $this->assertDatabaseHas('users', ['email' => 'citizen@gcms.test', 'role' => 'citizen']);
-        $this->assertDatabaseCount('complaints', 9);
+        $this->assertDatabaseCount('complaints', 50);
     }
 
     public function test_admin_citizen_and_employee_endpoint_samples_are_protected(): void

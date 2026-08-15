@@ -38,8 +38,6 @@ class NotificationDispatcherService
     ): ?UserNotification {
         $preferences = $this->preferencesFor($user);
         $payload = array_merge($this->complaintData($complaint), $data);
-        $title = LocalizedText::resolve($title) ?? $title;
-        $body = LocalizedText::resolve($body);
 
         $notification = $this->createDatabaseNotification($user, $type, $complaint, $title, $body, $payload, $once, $preferences);
 
@@ -52,6 +50,9 @@ class NotificationDispatcherService
 
             return $notification;
         }
+
+        $title = LocalizedText::resolve($title) ?? $title;
+        $body = LocalizedText::resolve($body);
 
         $this->dispatchEmail($user, $type, $complaint, $title, $body, $payload, $notification, $preferences);
         $this->dispatchPush($user, $type, $complaint, $title, $body, $payload, $notification, $preferences);

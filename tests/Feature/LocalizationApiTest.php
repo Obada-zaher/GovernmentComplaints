@@ -271,7 +271,7 @@ class LocalizationApiTest extends TestCase
         $user = User::factory()->employee()->create();
         $complaint = Complaint::factory()->create();
 
-        app(NotificationService::class)->notifyUser(
+        $notification = app(NotificationService::class)->notifyUser(
             $user,
             NotificationService::TYPE_COMPLAINT_ASSIGNED,
             $complaint,
@@ -284,6 +284,11 @@ class LocalizationApiTest extends TestCase
                 && $job->title === 'تم تعيين شكوى لك'
                 && str_starts_with((string) $job->body, 'تم تعيين الشكوى');
         });
+        $this->assertSame('Complaint assigned to you', $notification?->title);
+        $this->assertSame(
+            "Complaint {$complaint->complaint_number} has been assigned to you.",
+            $notification?->body,
+        );
     }
 
     /**

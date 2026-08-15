@@ -33,6 +33,13 @@ php artisan migrate --force
 
 php artisan db:seed --force
 
+if [ "${SEED_DEMO_DATA:-false}" = "true" ]; then
+  echo "SEED_DEMO_DATA=true: seeding the full academic demo dataset..."
+  php artisan db:seed --class=DemoDataSeeder --force
+else
+  echo "SEED_DEMO_DATA is not enabled: skipping the full academic demo dataset."
+fi
+
 echo "Laravel deployment startup tasks completed."
 
 exec "$@"

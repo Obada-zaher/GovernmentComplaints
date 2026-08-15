@@ -94,6 +94,14 @@ php artisan migrate --force
 php artisan db:seed --force
 ```
 
+The full academic demo dataset is deliberately opt-in. When Render has `SEED_DEMO_DATA=true`, startup then runs:
+
+```bash
+php artisan db:seed --class=DemoDataSeeder --force
+```
+
+This idempotently rebuilds the controlled `GCMS-DEMO-001` through `GCMS-DEMO-050` dataset after the normal safe seed. When `SEED_DEMO_DATA=false` (the default), only normal/base seeders run and no demo complaints are inserted.
+
 Deployment never uses `migrate:fresh`, `db:wipe`, or any command that deletes existing production data. The seeders are written to update or create stable lookup/demo records, so redeploying the same commit should not duplicate departments, categories, priorities, SLA rules, or demo users.
 
 If a Render deployment exits with status 1, inspect the Render Logs for the failing startup command. Startup runs `php artisan migrate --force` and `php artisan db:seed --force`; it never runs `migrate:fresh`. For MySQL set `DB_CONNECTION=mysql`. For PostgreSQL set `DB_CONNECTION=pgsql` and ensure the Docker image includes the `pdo_pgsql` PHP extension.
@@ -114,6 +122,14 @@ AWS_USE_PATH_STYLE_ENDPOINT=false
 ```
 
 `AWS_URL` and `AWS_ENDPOINT` are optional for standard AWS S3 but are commonly needed by S3-compatible providers. Configure the bucket/provider to serve the URLs returned by its filesystem disk. Do not commit these values. Local development uses `COMPLAINT_ATTACHMENTS_DISK=public`; run `php artisan storage:link` once locally (the Render entrypoint does this automatically).
+
+For the current academic/demo Render deployment, add this environment variable:
+
+```text
+SEED_DEMO_DATA=true
+```
+
+Render startup will then safely run migrations, the normal base seed, and the full deterministic demo seed. It never uses `migrate:fresh`, `db:wipe`, or another destructive database command. Re-deploying is safe: the controlled demo records are idempotent and unrelated/manual complaints are not deleted.
 
 After pushing to GitHub, deploy the updated application using:
 
@@ -183,6 +199,8 @@ Presentation/demo data:
 ```bash
 php artisan db:seed --class=DemoDataSeeder
 ```
+
+For a normal environment, keep `SEED_DEMO_DATA=false`. For a Render presentation deployment, set `SEED_DEMO_DATA=true` so the same demo seeder runs automatically after base startup seeding.
 
 Demo accounts use password `password`.
 

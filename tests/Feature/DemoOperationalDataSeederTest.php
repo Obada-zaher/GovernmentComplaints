@@ -150,8 +150,16 @@ class DemoOperationalDataSeederTest extends TestCase
 
         $admin = User::query()->where('email', DemoUsersSeeder::ADMIN_EMAIL)->firstOrFail();
         Sanctum::actingAs($admin);
-        $this->getJson('/api/v1/admin/complaints?per_page=100')->assertOk()->assertJsonPath('meta.total', 50);
-        $this->getJson('/api/v1/admin/reports/overview')->assertOk()->assertJsonPath('data.total_complaints', 50);
+        $this->getJson('/api/v1/admin/complaints?per_page=50')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 50)
+            ->assertJsonCount(50, 'data.complaints');
+        $this->getJson('/api/v1/admin/reports/overview')
+            ->assertOk()
+            ->assertJsonPath('data.total_complaints', 50)
+            ->assertJsonPath('data.open_complaints', 33)
+            ->assertJsonPath('data.resolved_complaints', 8)
+            ->assertJsonPath('data.sla_breached_complaints', 12);
         $this->getJson('/api/v1/admin/reports/complaints-by-status')->assertOk()->assertJsonCount(9, 'data');
         $this->getJson('/api/v1/admin/reports/complaints-by-department')->assertOk()->assertJsonCount(5, 'data');
         $this->getJson('/api/v1/admin/reports/complaints-by-priority')->assertOk()->assertJsonCount(4, 'data');

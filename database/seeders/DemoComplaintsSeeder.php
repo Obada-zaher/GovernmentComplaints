@@ -438,7 +438,7 @@ class DemoComplaintsSeeder extends Seeder
             'citizen@gcms.test', 'citizen@gcms.test', 'citizen.four@gcms.test', 'citizen.five@gcms.test', 'citizen.four@gcms.test',
             'citizen.four@gcms.test', 'citizen.four@gcms.test', 'citizen.five@gcms.test', 'citizen.five@gcms.test', 'citizen.five@gcms.test',
         ];
-        $daysAgo = [0, 3, 5, 4, 2, 65, 65, 6, 3, 60, 1, 4, 2, 5, 1, 60, 55, 1, 0, 1, 2, 1, 2, 4, 2, 55, 55, 1, 3, 0, 4, 5, 2, 1, 2, 52, 45, 2, 0, 0, 5, 2, 1, 4, 1, 30, 45, 40, 20, 35];
+        $daysAgo = [0, 3, 5, 4, 2, 65, 65, 6, 3, 60, 1, 4, 2, 5, 1, 60, 55, 1, 0, 1, 2, 1, 2, 4, 2, 55, 55, 1, 3, 0, 2, 5, 2, 1, 2, 52, 45, 2, 0, 0, 1, 2, 1, 4, 1, 30, 45, 40, 20, 35];
         $locations = [
             [33.5138, 36.2765], [33.5216, 36.2690], [33.5007, 36.2854], [33.5092, 36.2898], [33.5271, 36.2750],
             [33.5345, 36.2840], [33.5168, 36.3031], [33.5174, 36.3170], [33.5085, 36.2818], [33.5340, 36.3263],

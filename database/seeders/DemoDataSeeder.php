@@ -19,6 +19,7 @@ class DemoDataSeeder extends Seeder
             ClassificationRuleSeeder::class,
             DemoUsersSeeder::class,
             DemoComplaintsSeeder::class,
+            DemoOperationalDataSeeder::class,
         ]);
     }
 }

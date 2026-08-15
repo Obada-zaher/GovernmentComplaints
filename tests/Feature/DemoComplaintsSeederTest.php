@@ -136,7 +136,10 @@ class DemoComplaintsSeederTest extends TestCase
             ->where('is_sla_breached', false)
             ->whereIn('status', ['submitted', 'under_review', 'assigned', 'in_progress', 'waiting_citizen', 'escalated'])
             ->get();
-        $this->assertTrue($withinSlaOpenComplaints->every(fn (Complaint $complaint): bool => $complaint->due_at->isFuture()));
+        $this->assertSame([], $withinSlaOpenComplaints
+            ->filter(fn (Complaint $complaint): bool => ! $complaint->due_at->isFuture())
+            ->pluck('complaint_number')
+            ->all());
 
         $employees = User::query()->where('role', 'employee')->get();
         $this->assertCount(10, $employees);

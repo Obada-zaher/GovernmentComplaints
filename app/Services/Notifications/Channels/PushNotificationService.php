@@ -12,7 +12,10 @@ use Throwable;
 
 class PushNotificationService
 {
-    public function __construct(private readonly NotificationDeliveryLogService $deliveryLogs) {}
+    public function __construct(
+        private readonly NotificationDeliveryLogService $deliveryLogs,
+        private readonly PushTokenProviderDetector $providerDetector,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -46,8 +49,12 @@ class PushNotificationService
         }
 
         foreach ($tokens as $deviceToken) {
+            $provider = $this->providerDetector->detect($deviceToken->token);
+
             try {
-                $providerMessageId = $this->sendToFcm($deviceToken->token, $payload);
+                $providerMessageId = $provider === PushTokenProviderDetector::EXPO
+                    ? $this->sendToExpo($deviceToken->token, $payload)
+                    : $this->sendToFcm($deviceToken->token, $payload);
 
                 $this->deliveryLogs->record(
                     $user,
@@ -57,11 +64,17 @@ class PushNotificationService
                     $type,
                     'sent',
                     'device_token:'.$deviceToken->id,
-                    $providerMessageId ? 'fcm' : 'fcm-log',
+                    $provider === PushTokenProviderDetector::EXPO
+                        ? PushTokenProviderDetector::EXPO
+                        : ($providerMessageId ? 'fcm' : 'fcm-log'),
                     $payload,
                     providerMessageId: $providerMessageId,
                 );
             } catch (Throwable $exception) {
+                if ($exception instanceof ExpoPushDeliveryException && $exception->deviceNotRegistered) {
+                    $deviceToken->forceFill(['is_active' => false])->save();
+                }
+
                 $this->deliveryLogs->record(
                     $user,
                     $userNotification,
@@ -70,12 +83,61 @@ class PushNotificationService
                     $type,
                     'failed',
                     'device_token:'.$deviceToken->id,
-                    'fcm',
+                    $provider,
                     $payload,
                     $exception->getMessage(),
                 );
             }
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function sendToExpo(string $token, array $payload): string
+    {
+        $request = Http::timeout(8)->acceptJson();
+        $accessToken = config('gcms_notifications.push.expo.access_token');
+
+        if ($accessToken) {
+            $request = $request->withToken($accessToken);
+        }
+
+        $response = $request->post((string) config('gcms_notifications.push.expo.url'), [
+            'to' => $token,
+            'title' => $payload['title'],
+            'body' => $payload['body'],
+            'sound' => 'default',
+            'data' => $payload,
+        ]);
+
+        if ($response->failed()) {
+            throw new ExpoPushDeliveryException('Expo push request failed with status '.$response->status().'.');
+        }
+
+        $ticket = $response->json('data');
+        if (is_array($ticket) && array_is_list($ticket)) {
+            $ticket = $ticket[0] ?? null;
+        }
+
+        if (! is_array($ticket)) {
+            throw new ExpoPushDeliveryException('Expo push response did not include a push ticket.');
+        }
+
+        if (($ticket['status'] ?? null) !== 'ok') {
+            $detail = data_get($ticket, 'details.error');
+            $message = $ticket['message'] ?? 'Expo push ticket reported an error.';
+            $errorMessage = $detail ? $message.' ('.$detail.').' : $message;
+
+            throw new ExpoPushDeliveryException($errorMessage, $detail === 'DeviceNotRegistered');
+        }
+
+        $ticketId = $ticket['id'] ?? null;
+        if (! is_string($ticketId) || $ticketId === '') {
+            throw new ExpoPushDeliveryException('Expo push ticket did not include an ID.');
+        }
+
+        return $ticketId;
     }
 
     /**

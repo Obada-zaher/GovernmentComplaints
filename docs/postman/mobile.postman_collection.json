@@ -1156,7 +1156,7 @@
         },
         {
             "name": "Devices and Preferences",
-            "description": "Device token and notification preference routes. Real device tokens come from the Firebase SDK; Postman uses fake_fcm_token only for backend testing.",
+            "description": "Device token and notification preference routes. The unchanged token payload accepts both Expo tokens from Notifications.getExpoPushTokenAsync() and existing native FCM tokens; the backend detects the provider automatically. Postman uses fake_fcm_token only for backend testing.",
             "item": [
                 {
                     "name": "Register Device Token",
@@ -1181,7 +1181,7 @@
                                 "device-tokens"
                             ]
                         },
-                        "description": "Purpose: Register or update a device token.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.\nSaves device_token_id when returned.",
+                        "description": "Purpose: Register or update a device token. Submit the existing token/platform payload unchanged: Expo tokens such as ExponentPushToken[...] and ExpoPushToken[...] are automatically delivered through Expo, while other tokens continue through FCM.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.\nSaves device_token_id when returned.",
                         "auth": {
                             "type": "bearer",
                             "bearer": [

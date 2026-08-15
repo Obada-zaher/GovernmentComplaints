@@ -3,6 +3,10 @@
 return [
     'push' => [
         'enabled' => env('PUSH_NOTIFICATIONS_ENABLED', false),
+        'expo' => [
+            'url' => env('EXPO_PUSH_URL', 'https://exp.host/--/api/v2/push/send'),
+            'access_token' => env('EXPO_PUSH_ACCESS_TOKEN'),
+        ],
         'fcm' => [
             'project_id' => env('FCM_PROJECT_ID'),
             'credentials_path' => env('FCM_CREDENTIALS_PATH'),

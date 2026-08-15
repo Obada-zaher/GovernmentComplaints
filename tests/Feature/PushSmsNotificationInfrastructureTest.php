@@ -12,9 +12,11 @@ use App\Models\Priority;
 use App\Models\User;
 use App\Models\UserDeviceToken;
 use App\Services\Notifications\Channels\PushNotificationService;
+use App\Services\Notifications\Channels\PushTokenProviderDetector;
 use App\Services\Notifications\Channels\SmsNotificationService;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
@@ -31,6 +33,8 @@ class PushSmsNotificationInfrastructureTest extends TestCase
         Notification::fake();
         config([
             'gcms_notifications.push.enabled' => false,
+            'gcms_notifications.push.expo.access_token' => null,
+            'gcms_notifications.push.fcm.server_key' => null,
             'gcms_notifications.sms.enabled' => false,
             'gcms_notifications.sms.provider' => 'log',
             'gcms_notifications.sms.twilio.sid' => null,
@@ -176,16 +180,167 @@ class PushSmsNotificationInfrastructureTest extends TestCase
     public function test_push_is_skipped_when_disabled(): void
     {
         $user = User::factory()->create();
-        UserDeviceToken::factory()->create(['user_id' => $user->id]);
+        UserDeviceToken::factory()->create(['user_id' => $user->id, 'token' => 'ExponentPushToken[disabled-expo-token]']);
         $complaint = Complaint::factory()->create(['citizen_id' => $user->id]);
+        Http::fake();
 
         app(PushNotificationService::class)->send($user, NotificationService::TYPE_COMPLAINT_ASSIGNED, $complaint, 'Assigned');
+
+        Http::assertNothingSent();
 
         $this->assertDatabaseHas('notification_delivery_logs', [
             'user_id' => $user->id,
             'channel' => 'push',
             'type' => NotificationService::TYPE_COMPLAINT_ASSIGNED,
             'status' => 'skipped',
+        ]);
+    }
+
+    public function test_expo_token_provider_detection_supports_both_expo_formats(): void
+    {
+        $detector = app(PushTokenProviderDetector::class);
+
+        $this->assertSame(PushTokenProviderDetector::EXPO, $detector->detect('ExponentPushToken[example-token]'));
+        $this->assertSame(PushTokenProviderDetector::EXPO, $detector->detect('ExpoPushToken[example-token]'));
+        $this->assertSame(PushTokenProviderDetector::FCM, $detector->detect('existing-fcm-token'));
+    }
+
+    public function test_exponent_push_token_routes_to_expo_and_records_ticket_id(): void
+    {
+        config(['gcms_notifications.push.enabled' => true]);
+        Http::fake([
+            'https://exp.host/--/api/v2/push/send' => Http::response([
+                'data' => [[
+                    'status' => 'ok',
+                    'id' => 'expo-ticket-123',
+                ]],
+            ]),
+        ]);
+        $user = User::factory()->create();
+        $complaint = Complaint::factory()->create(['citizen_id' => $user->id, 'status' => 'assigned']);
+        $token = UserDeviceToken::factory()->create([
+            'user_id' => $user->id,
+            'token' => 'ExponentPushToken[expo-success-token]',
+        ]);
+
+        app(PushNotificationService::class)->send(
+            $user,
+            NotificationService::TYPE_COMPLAINT_ASSIGNED,
+            $complaint,
+            'Complaint assigned',
+            'Your complaint has been assigned.',
+        );
+
+        Http::assertSent(function ($request) use ($complaint, $token): bool {
+            $data = $request->data();
+
+            return $request->url() === 'https://exp.host/--/api/v2/push/send'
+                && $data['to'] === $token->token
+                && $data['title'] === 'Complaint assigned'
+                && $data['body'] === 'Your complaint has been assigned.'
+                && $data['data']['type'] === NotificationService::TYPE_COMPLAINT_ASSIGNED
+                && $data['data']['complaint_id'] === $complaint->id
+                && $data['data']['complaint_number'] === $complaint->complaint_number
+                && $data['data']['status'] === 'assigned'
+                && $data['data']['click_action'] === 'OPEN_COMPLAINT'
+                && $data['data']['url_hint'] === '/complaints/'.$complaint->id;
+        });
+        Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'fcm.googleapis.com'));
+
+        $this->assertDatabaseHas('notification_delivery_logs', [
+            'user_id' => $user->id,
+            'channel' => 'push',
+            'status' => 'sent',
+            'provider' => 'expo',
+            'provider_message_id' => 'expo-ticket-123',
+        ]);
+    }
+
+    public function test_expo_error_ticket_records_failed_delivery_log(): void
+    {
+        config(['gcms_notifications.push.enabled' => true]);
+        Http::fake([
+            'https://exp.host/--/api/v2/push/send' => Http::response([
+                'data' => [[
+                    'status' => 'error',
+                    'message' => 'Expo rejected the push token.',
+                    'details' => ['error' => 'InvalidCredentials'],
+                ]],
+            ]),
+        ]);
+        $user = User::factory()->create();
+        $token = UserDeviceToken::factory()->create([
+            'user_id' => $user->id,
+            'token' => 'ExpoPushToken[expo-error-token]',
+        ]);
+
+        app(PushNotificationService::class)->send($user, NotificationService::TYPE_COMPLAINT_ASSIGNED, null, 'Assigned');
+
+        $this->assertDatabaseHas('notification_delivery_logs', [
+            'user_id' => $user->id,
+            'recipient' => 'device_token:'.$token->id,
+            'channel' => 'push',
+            'status' => 'failed',
+            'provider' => 'expo',
+            'error_message' => 'Expo rejected the push token. (InvalidCredentials).',
+        ]);
+    }
+
+    public function test_expo_device_not_registered_error_deactivates_token_without_deleting_it(): void
+    {
+        config(['gcms_notifications.push.enabled' => true]);
+        Http::fake([
+            'https://exp.host/--/api/v2/push/send' => Http::response([
+                'data' => [[
+                    'status' => 'error',
+                    'message' => 'The device is no longer registered.',
+                    'details' => ['error' => 'DeviceNotRegistered'],
+                ]],
+            ]),
+        ]);
+        $user = User::factory()->create();
+        $token = UserDeviceToken::factory()->create([
+            'user_id' => $user->id,
+            'token' => 'ExponentPushToken[unregistered-device-token]',
+        ]);
+
+        app(PushNotificationService::class)->send($user, NotificationService::TYPE_COMPLAINT_ASSIGNED, null, 'Assigned');
+
+        $this->assertFalse($token->fresh()->is_active);
+        $this->assertDatabaseHas('notification_delivery_logs', [
+            'recipient' => 'device_token:'.$token->id,
+            'channel' => 'push',
+            'status' => 'failed',
+            'provider' => 'expo',
+        ]);
+    }
+
+    public function test_non_expo_token_uses_existing_fcm_path(): void
+    {
+        config([
+            'gcms_notifications.push.enabled' => true,
+            'gcms_notifications.push.fcm.server_key' => 'fcm-server-key',
+        ]);
+        Http::fake([
+            'https://fcm.googleapis.com/fcm/send' => Http::response(['message_id' => 'fcm-message-123']),
+        ]);
+        $user = User::factory()->create();
+        $token = UserDeviceToken::factory()->create([
+            'user_id' => $user->id,
+            'token' => 'existing-fcm-token',
+        ]);
+
+        app(PushNotificationService::class)->send($user, NotificationService::TYPE_COMPLAINT_ASSIGNED, null, 'Assigned');
+
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://fcm.googleapis.com/fcm/send'
+            && $request->data()['to'] === $token->token);
+        Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'exp.host'));
+        $this->assertDatabaseHas('notification_delivery_logs', [
+            'user_id' => $user->id,
+            'channel' => 'push',
+            'status' => 'sent',
+            'provider' => 'fcm',
+            'provider_message_id' => 'fcm-message-123',
         ]);
     }
 
@@ -357,6 +512,40 @@ class PushSmsNotificationInfrastructureTest extends TestCase
             'channel' => 'sms',
             'status' => 'failed',
             'provider' => 'twilio',
+        ]);
+    }
+
+    public function test_expo_push_failure_does_not_fail_complaint_status_update(): void
+    {
+        config(['gcms_notifications.push.enabled' => true]);
+        Http::fake([
+            'https://exp.host/--/api/v2/push/send' => Http::response([
+                'data' => [[
+                    'status' => 'error',
+                    'message' => 'Expo push delivery failed.',
+                    'details' => ['error' => 'MessageTooBig'],
+                ]],
+            ]),
+        ]);
+        [$admin, $employee, $complaint] = $this->assignmentScenario();
+        $complaint->forceFill(['assigned_employee_id' => $employee->id, 'status' => 'assigned'])->save();
+        UserDeviceToken::factory()->create([
+            'user_id' => $complaint->citizen_id,
+            'token' => 'ExpoPushToken[workflow-failure-token]',
+        ]);
+        Sanctum::actingAs($admin);
+
+        $this->patchJson("/api/v1/admin/complaints/{$complaint->id}/status", [
+            'status' => 'in_progress',
+            'note' => 'Start work.',
+        ])->assertOk();
+
+        $this->assertSame('in_progress', $complaint->fresh()->status);
+        $this->assertDatabaseHas('notification_delivery_logs', [
+            'user_id' => $complaint->citizen_id,
+            'channel' => 'push',
+            'status' => 'failed',
+            'provider' => 'expo',
         ]);
     }
 

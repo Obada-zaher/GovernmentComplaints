@@ -228,6 +228,38 @@ php artisan queue:work
 
 In production, run the worker under a process supervisor.
 
+## Push Notification Providers
+
+The existing device-token API is unchanged. The backend detects the provider from the submitted token; mobile clients do not send a provider field.
+
+Current Expo mobile flow:
+
+```text
+Notifications.getExpoPushTokenAsync()
+        ↓
+POST /api/v1/device-tokens
+        ↓
+Backend detects ExponentPushToken[...] or ExpoPushToken[...]
+        ↓
+Expo Push Service
+        ↓
+FCM/APNs
+        ↓
+Mobile device
+```
+
+Existing native FCM tokens continue to use the FCM path:
+
+```text
+POST /api/v1/device-tokens
+        ↓
+Backend detects a non-Expo token
+        ↓
+FCM
+```
+
+Set `PUSH_NOTIFICATIONS_ENABLED=true` to send push notifications. Expo delivery uses `EXPO_PUSH_URL` (default: `https://exp.host/--/api/v2/push/send`); `EXPO_PUSH_ACCESS_TOKEN` is optional and is only needed when Expo push security is enabled for the project. Do not commit provider credentials.
+
 ## SLA Command
 
 Manual SLA breach check:

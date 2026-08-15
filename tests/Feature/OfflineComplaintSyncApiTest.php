@@ -302,6 +302,24 @@ class OfflineComplaintSyncApiTest extends TestCase
         $this->assertSame('Offline complaint was already synced.', $second->json('message'));
     }
 
+    public function test_different_citizens_can_sync_the_same_client_uuid_independently(): void
+    {
+        $citizenA = $this->actingAsCitizen();
+        $this->postJson('/api/v1/citizen/offline/complaints/sync', $this->payload(clientUuid: 'shared-client-uuid'))->assertCreated();
+
+        $citizenB = User::factory()->citizen()->create();
+        Sanctum::actingAs($citizenB);
+        $this->postJson('/api/v1/citizen/offline/complaints/sync', $this->payload(clientUuid: 'shared-client-uuid'))->assertCreated();
+
+        $submissions = OfflineSubmission::query()->where('client_uuid', 'shared-client-uuid')->get();
+        $complaints = Complaint::query()->where('client_uuid', 'shared-client-uuid')->get();
+
+        $this->assertCount(2, $submissions);
+        $this->assertCount(2, $complaints);
+        $this->assertSame([$citizenA->id, $citizenB->id], $submissions->sortBy('citizen_id')->pluck('citizen_id')->values()->all());
+        $this->assertTrue($submissions->every(fn (OfflineSubmission $submission): bool => $submission->status === 'synced'));
+    }
+
     public function test_failed_processing_stores_failed_status(): void
     {
         $this->actingAsCitizen();

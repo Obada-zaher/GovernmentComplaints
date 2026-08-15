@@ -78,6 +78,11 @@ class DemoComplaintsSeederTest extends TestCase
             $this->assertNull($timeline->first()->from_status);
             $this->assertSame('submitted', $timeline->first()->to_status);
             $this->assertSame($complaint->status, $timeline->last()->to_status);
+            $currentStatusEntry = $timeline
+                ->filter(fn (ComplaintStatusHistory $history): bool => $history->to_status === $complaint->status && $history->from_status !== $history->to_status)
+                ->last();
+            $this->assertNotNull($currentStatusEntry);
+            $this->assertSame($currentStatusEntry->created_at?->timestamp, $complaint->status_entered_at?->timestamp);
 
             foreach ($timeline->values() as $index => $history) {
                 if ($index > 0) {

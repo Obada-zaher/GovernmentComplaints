@@ -5,6 +5,7 @@ namespace App\Services\Offline;
 use App\Models\Complaint;
 use App\Models\OfflineSubmission;
 use App\Models\User;
+use App\Services\ComplaintAttachmentService;
 use App\Services\ComplaintService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
@@ -13,7 +14,10 @@ use Throwable;
 
 class OfflineComplaintSyncService
 {
-    public function __construct(private readonly ComplaintService $complaintService) {}
+    public function __construct(
+        private readonly ComplaintService $complaintService,
+        private readonly ComplaintAttachmentService $attachmentService,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -51,8 +55,10 @@ class OfflineComplaintSyncService
             }
         }
 
+        $storedFiles = [];
+
         try {
-            return DB::transaction(function () use ($citizen, $data, $offlineSubmission): array {
+            return DB::transaction(function () use ($citizen, $data, $offlineSubmission, &$storedFiles): array {
                 $offlineSubmission = OfflineSubmission::query()
                     ->where('citizen_id', $citizen->id)
                     ->where('client_uuid', $data['client_uuid'])
@@ -71,6 +77,10 @@ class OfflineComplaintSyncService
                 ])->save();
 
                 $complaint = $this->complaintService->create($citizen, $this->complaintPayload($data));
+                $storedFiles = $complaint->attachments()
+                    ->get(['disk', 'file_path'])
+                    ->map(fn ($attachment): array => ['disk' => $attachment->disk, 'path' => $attachment->file_path])
+                    ->all();
 
                 $offlineSubmission->forceFill([
                     'status' => 'synced',
@@ -86,26 +96,9 @@ class OfflineComplaintSyncService
                 ];
             });
         } catch (Throwable $exception) {
-            $recoveredResult = DB::transaction(function () use ($citizen, $data, $exception): ?array {
-                $offlineSubmission = OfflineSubmission::query()
-                    ->where('citizen_id', $citizen->id)
-                    ->where('client_uuid', $data['client_uuid'])
-                    ->lockForUpdate()
-                    ->firstOrFail();
+            $this->attachmentService->deleteStoredFiles($storedFiles);
 
-                $offlineSubmission->load('syncedComplaint');
-
-                if ($offlineSubmission->status === 'synced' && $offlineSubmission->syncedComplaint) {
-                    return $this->result($offlineSubmission, true);
-                }
-
-                $offlineSubmission->forceFill([
-                    'status' => 'failed',
-                    'error_message' => $exception->getMessage(),
-                ])->save();
-
-                return null;
-            });
+            $recoveredResult = $this->recoverAfterFailure($citizen, $data, $exception);
 
             if ($recoveredResult) {
                 return $recoveredResult;
@@ -113,6 +106,34 @@ class OfflineComplaintSyncService
 
             throw $exception;
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{offline_submission: OfflineSubmission, complaint: Complaint, idempotent: bool}|null
+     */
+    protected function recoverAfterFailure(User $citizen, array $data, Throwable $exception): ?array
+    {
+        return DB::transaction(function () use ($citizen, $data, $exception): ?array {
+            $offlineSubmission = OfflineSubmission::query()
+                ->where('citizen_id', $citizen->id)
+                ->where('client_uuid', $data['client_uuid'])
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $offlineSubmission->load('syncedComplaint');
+
+            if ($offlineSubmission->status === 'synced' && $offlineSubmission->syncedComplaint) {
+                return $this->result($offlineSubmission, true);
+            }
+
+            $offlineSubmission->forceFill([
+                'status' => 'failed',
+                'error_message' => $exception->getMessage(),
+            ])->save();
+
+            return null;
+        });
     }
 
     /**

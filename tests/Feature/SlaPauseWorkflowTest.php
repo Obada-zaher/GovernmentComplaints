@@ -188,6 +188,19 @@ class SlaPauseWorkflowTest extends TestCase
         $this->assertFalse(app(ReportService::class)->slaBreachesQuery()->whereKey($complaint->id)->exists());
     }
 
+    public function test_sla_deadline_equal_to_now_breaches_unless_the_complaint_is_paused(): void
+    {
+        Carbon::setTestNow('2026-08-16 10:00:00');
+        [, , $eligible] = $this->inProgressComplaint(now());
+        [, , $paused] = $this->inProgressComplaint(now());
+        $paused->forceFill(['sla_paused_at' => now()->subMinute()])->save();
+
+        $this->artisan('complaints:check-sla')->assertExitCode(0);
+
+        $this->assertTrue($eligible->fresh()->is_sla_breached);
+        $this->assertFalse($paused->fresh()->is_sla_breached);
+    }
+
     /** @return array{0: User, 1: User, 2: Complaint} */
     private function inProgressComplaint(Carbon $dueAt): array
     {

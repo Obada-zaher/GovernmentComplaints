@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Throwable;
 
 class ComplaintAttachmentService
@@ -40,6 +41,11 @@ class ComplaintAttachmentService
         $extension = $file->getClientOriginalExtension();
         $fileName = Str::uuid()->toString().($extension ? ".{$extension}" : '');
         $path = $file->storeAs("complaints/{$complaint->id}", $fileName, $disk);
+
+        if (! is_string($path) || trim($path) === '') {
+            throw new RuntimeException('Unable to store the complaint attachment.');
+        }
+
         $storedFiles[] = ['disk' => $disk, 'path' => $path];
 
         $complaint->attachments()->create([

@@ -102,6 +102,7 @@ class DemoComplaintsSeeder extends Seeder
             $pauseSeconds = $this->pausedSeconds($timeline);
             $isWaiting = $scenario['status'] === 'waiting_citizen';
             $lastEvent = $timeline[array_key_last($timeline)];
+            $statusEnteredAt = $this->statusEnteredAt($timeline, $scenario['status'], $createdAt);
             $firstResponseAt = count($timeline) > 1 ? $timeline[1]['at'] : null;
             $resolvedEvent = collect($timeline)->firstWhere('to_status', 'resolved');
             $closedEvent = collect($timeline)->firstWhere('to_status', 'closed');
@@ -115,6 +116,7 @@ class DemoComplaintsSeeder extends Seeder
                 'title' => $scenario['title'],
                 'description' => $scenario['description'],
                 'status' => $scenario['status'],
+                'status_entered_at' => $statusEnteredAt,
                 'latitude' => $scenario['latitude'],
                 'longitude' => $scenario['longitude'],
                 'address' => $scenario['address'],
@@ -199,6 +201,18 @@ class DemoComplaintsSeeder extends Seeder
         }
 
         return $seconds;
+    }
+
+    /**
+     * @param  array<int, array{from_status: string|null, to_status: string, actor: User, note: string, duration_minutes: int|null, at: CarbonImmutable}>  $timeline
+     */
+    private function statusEnteredAt(array $timeline, string $status, CarbonImmutable $fallback): CarbonImmutable
+    {
+        $transition = collect($timeline)
+            ->filter(fn (array $event): bool => $event['to_status'] === $status && $event['from_status'] !== $event['to_status'])
+            ->last();
+
+        return $transition['at'] ?? $fallback;
     }
 
     /**

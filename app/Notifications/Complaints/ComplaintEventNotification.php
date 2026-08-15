@@ -30,25 +30,25 @@ class ComplaintEventNotification extends Notification
     {
         $message = (new MailMessage)
             ->subject($this->mailSubject())
-            ->greeting('Hello '.$notifiable->name.',')
+            ->greeting(trans('api.mail.greeting', ['name' => $notifiable->name]))
             ->line($this->body ?? $this->title);
 
         if ($this->complaint) {
             $message
-                ->line('Complaint Number: '.$this->complaint->complaint_number)
-                ->line('Title: '.$this->complaint->title)
-                ->line('Status: '.$this->complaint->status);
+                ->line(trans('api.mail.complaint_number', ['number' => $this->complaint->complaint_number]))
+                ->line(trans('api.mail.title', ['title' => $this->complaint->title]))
+                ->line(trans('api.mail.status', ['status' => $this->complaint->status]));
         }
 
-        return $message->line('Please sign in to the Government Complaint Management System for more details.');
+        return $message->line(trans('api.mail.sign_in_for_details'));
     }
 
     private function mailSubject(): string
     {
         return match ($this->type) {
-            'complaint_assigned' => 'Complaint Assignment Notification',
-            'sla_breached' => 'SLA Breach Alert',
-            'complaint_resolved' => 'Complaint Resolution Notification',
+            'complaint_assigned' => trans('api.mail.subjects.complaint_assigned'),
+            'sla_breached' => trans('api.mail.subjects.sla_breached'),
+            'complaint_resolved' => trans('api.mail.subjects.complaint_resolved'),
             default => $this->title,
         };
     }

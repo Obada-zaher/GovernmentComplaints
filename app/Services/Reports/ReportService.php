@@ -129,7 +129,7 @@ class ReportService
             return [
                 'department' => [
                     'id' => $department->id,
-                    'name' => $department->name,
+                    'name' => $department->localizedName(),
                     'code' => $department->code,
                 ],
                 'total' => $total,
@@ -162,7 +162,7 @@ class ReportService
             return [
                 'priority' => [
                     'id' => $priority->id,
-                    'name' => $priority->name,
+                    'name' => $priority->localizedName(),
                     'code' => $priority->code,
                     'level' => $priority->level,
                 ],
@@ -232,7 +232,7 @@ class ReportService
                     ],
                     'department' => $employee->department ? [
                         'id' => $employee->department->id,
-                        'name' => $employee->department->name,
+                        'name' => $employee->department->localizedName(),
                     ] : null,
                     'assigned_total' => $assignedTotal,
                     'in_progress' => $items->where('status', 'in_progress')->count(),
@@ -333,7 +333,7 @@ class ReportService
                 return [
                     'department' => [
                         'id' => $department->id,
-                        'name' => $department->name,
+                        'name' => $department->localizedName(),
                         'code' => $department->code,
                     ],
                     'total_with_sla' => $items->count(),
@@ -363,7 +363,7 @@ class ReportService
                 return [
                     'priority' => [
                         'id' => $priority->id,
-                        'name' => $priority->name,
+                        'name' => $priority->localizedName(),
                         'code' => $priority->code,
                         'level' => $priority->level,
                     ],

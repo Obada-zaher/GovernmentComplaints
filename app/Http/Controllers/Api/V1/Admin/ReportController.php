@@ -121,12 +121,12 @@ class ReportController extends Controller
                     'status' => $complaint->status,
                     'department' => $complaint->department ? [
                         'id' => $complaint->department->id,
-                        'name' => $complaint->department->name,
+                        'name' => $complaint->department->localizedName(),
                         'code' => $complaint->department->code,
                     ] : null,
                     'priority' => $complaint->priority ? [
                         'id' => $complaint->priority->id,
-                        'name' => $complaint->priority->name,
+                        'name' => $complaint->priority->localizedName(),
                         'code' => $complaint->priority->code,
                         'level' => $complaint->priority->level,
                     ] : null,

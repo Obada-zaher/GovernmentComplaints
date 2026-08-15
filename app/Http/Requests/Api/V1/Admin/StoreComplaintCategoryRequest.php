@@ -19,8 +19,10 @@ class StoreComplaintCategoryRequest extends FormRequest
         return [
             'department_id' => ['required', 'exists:departments,id'],
             'name' => ['required', 'string', 'max:255'],
+            'name_ar' => ['nullable', 'string', 'max:255'],
             'code' => ['required', 'string', 'max:100', 'unique:complaint_categories,code'],
             'description' => ['nullable', 'string'],
+            'description_ar' => ['nullable', 'string'],
             'keywords' => ['nullable', 'array'],
             'keywords.*' => ['string'],
             'is_active' => ['sometimes', 'boolean'],

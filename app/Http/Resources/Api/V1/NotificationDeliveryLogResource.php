@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Support\LocalizedText;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -36,7 +37,7 @@ class NotificationDeliveryLogResource extends JsonResource
             'user_notification' => $this->whenLoaded('userNotification', fn (): ?array => $this->userNotification ? [
                 'id' => $this->userNotification->id,
                 'type' => $this->userNotification->type,
-                'title' => $this->userNotification->title,
+                'title' => LocalizedText::resolve($this->userNotification->title),
             ] : null),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

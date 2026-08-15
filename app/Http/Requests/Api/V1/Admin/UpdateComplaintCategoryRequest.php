@@ -20,6 +20,7 @@ class UpdateComplaintCategoryRequest extends FormRequest
         return [
             'department_id' => ['sometimes', 'required', 'exists:departments,id'],
             'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'name_ar' => ['nullable', 'string', 'max:255'],
             'code' => [
                 'sometimes',
                 'required',
@@ -28,6 +29,7 @@ class UpdateComplaintCategoryRequest extends FormRequest
                 Rule::unique('complaint_categories', 'code')->ignore($this->route('category')),
             ],
             'description' => ['nullable', 'string'],
+            'description_ar' => ['nullable', 'string'],
             'keywords' => ['nullable', 'array'],
             'keywords.*' => ['string'],
             'is_active' => ['sometimes', 'boolean'],

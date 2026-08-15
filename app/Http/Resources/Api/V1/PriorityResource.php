@@ -14,11 +14,11 @@ class PriorityResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'name' => $this->name,
+            'name' => $this->localizedName(),
             'code' => $this->code,
             'level' => $this->level,
             'color' => $this->color,
-            'description' => $this->description,
+            'description' => $this->localizedDescription(),
             'created_at' => $this->when($request->is('api/v1/admin/*'), $this->created_at?->toISOString()),
             'updated_at' => $this->when($request->is('api/v1/admin/*'), $this->updated_at?->toISOString()),
         ];

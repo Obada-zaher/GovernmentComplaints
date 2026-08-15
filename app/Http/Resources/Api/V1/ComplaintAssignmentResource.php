@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Support\LocalizedText;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -28,10 +29,10 @@ class ComplaintAssignmentResource extends JsonResource
             ] : null),
             'department' => $this->whenLoaded('department', fn () => $this->department ? [
                 'id' => $this->department->id,
-                'name' => $this->department->name,
+                'name' => $this->department->localizedName(),
                 'code' => $this->department->code,
             ] : null),
-            'note' => $this->note,
+            'note' => LocalizedText::resolve($this->note),
             'assigned_at' => $this->assigned_at?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),
         ];

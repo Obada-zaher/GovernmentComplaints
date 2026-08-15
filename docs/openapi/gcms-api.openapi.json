@@ -3,7 +3,7 @@
   "info": {
     "title": "Government Complaint Management System API",
     "version": "1.0.0",
-    "description": "Laravel REST API for a Government Complaint Management System. All application endpoints are under `/api/v1` and use the shared success/error envelope. Protected endpoints require a valid Sanctum bearer token and an active account. An authenticated inactive account is rejected with `403` and `Your account is inactive.`; after administrative deactivation, revoked tokens can instead return `401` because the token no longer exists."
+    "description": "Laravel REST API for a Government Complaint Management System. All application endpoints are under `/api/v1` and use the shared success/error envelope. Protected endpoints require a valid Sanctum bearer token and an active account. An authenticated inactive account is rejected with `403` and `Your account is inactive.`; after administrative deactivation, revoked tokens can instead return `401` because the token no longer exists. Every endpoint accepts an optional `Accept-Language` header. `ar` and `en` are supported, including regional variants such as `ar-SY` and `en-US` and standard quality values. It affects only human-readable messages, validation text, system notification/timeline text, and Department/Category/Priority display names. IDs, codes, statuses, roles, notification types, classification method identifiers, JSON keys, nesting, and user-entered complaint content remain stable."
   },
   "servers": [
     {
@@ -103,6 +103,13 @@
       }
     },
     "parameters": {
+      "AcceptLanguage": {
+        "name": "Accept-Language",
+        "in": "header",
+        "required": false,
+        "description": "Optional display language for human-readable output. Supports `ar`, `en`, and regional variants such as `ar-SY` and `en-US`; defaults safely to the configured application locale.",
+        "schema": { "type": "string", "example": "ar-SY,ar;q=0.9,en;q=0.8" }
+      },
       "ComplaintId": {
         "name": "complaint",
         "in": "path",

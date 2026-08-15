@@ -1,7 +1,7 @@
 {
     "info": {
         "name": "Mobile APIs",
-        "description": "Citizen-facing APIs for the mobile application. Protected requests use {{citizen_token}}.",
+        "description": "Citizen-facing APIs for the mobile application. Protected requests use {{citizen_token}}. Every request uses Accept-Language: {{accept_language}}; set ar to test localized complaint display names and classification with Arabic text such as انقطاع الكهرباء.",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "item": [
@@ -439,7 +439,7 @@
                                 "complaints"
                             ]
                         },
-                        "description": "Purpose: Create a complaint with JSON body. Saves complaint_id and complaint_number when returned.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "description": "Purpose: Create a complaint with JSON body. Saves complaint_id and complaint_number when returned. Localization example: compare accept_language=en and ar; user-entered title/description and canonical status remain unchanged while system message and lookup display names localize.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
                         "auth": {
                             "type": "bearer",
                             "bearer": [
@@ -1429,7 +1429,7 @@
                                 "preview"
                             ]
                         },
-                        "description": "Purpose: Preview predicted department/category without creating a complaint.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "description": "Purpose: Preview predicted department/category without creating a complaint. Localization example: use Arabic text (انقطاع الكهرباء) under either accept_language value; IDs/codes/method stay canonical and only display names/messages localize.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
                         "auth": {
                             "type": "bearer",
                             "bearer": [
@@ -1465,6 +1465,25 @@
                     ]
                 }
             ]
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "pm.request.headers.upsert({ key: 'Accept-Language', value: pm.variables.replaceIn('{{accept_language}}') || 'en' });"
+                ]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "accept_language",
+            "value": "en",
+            "type": "string",
+            "description": "Human-readable response language. Set to ar to exercise Arabic complaint and classification examples."
         }
     ]
 }

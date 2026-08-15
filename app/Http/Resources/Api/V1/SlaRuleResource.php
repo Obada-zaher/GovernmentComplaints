@@ -17,19 +17,19 @@ class SlaRuleResource extends JsonResource
             'department_id' => $this->department_id,
             'department' => $this->whenLoaded('department', fn () => $this->department ? [
                 'id' => $this->department->id,
-                'name' => $this->department->name,
+                'name' => $this->department->localizedName(),
                 'code' => $this->department->code,
             ] : null),
             'category_id' => $this->category_id,
             'category' => $this->whenLoaded('category', fn () => $this->category ? [
                 'id' => $this->category->id,
-                'name' => $this->category->name,
+                'name' => $this->category->localizedName(),
                 'code' => $this->category->code,
             ] : null),
             'priority_id' => $this->priority_id,
             'priority' => $this->whenLoaded('priority', fn () => $this->priority ? [
                 'id' => $this->priority->id,
-                'name' => $this->priority->name,
+                'name' => $this->priority->localizedName(),
                 'code' => $this->priority->code,
                 'level' => $this->priority->level,
             ] : null),

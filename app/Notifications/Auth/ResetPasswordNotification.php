@@ -23,11 +23,11 @@ class ResetPasswordNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('GCMS Password Reset')
-            ->greeting('Hello '.$notifiable->name.',')
-            ->line('Government Complaints Management System received a password reset request for your account.')
-            ->line('Use this reset token in the API reset-password request:')
+            ->subject(trans('api.mail.subjects.password_reset'))
+            ->greeting(trans('api.mail.greeting', ['name' => $notifiable->name]))
+            ->line(trans('api.mail.password_reset.request'))
+            ->line(trans('api.mail.password_reset.use_token'))
             ->line($this->token)
-            ->line('If you did not request a password reset, please ignore this email.');
+            ->line(trans('api.mail.password_reset.ignore'));
     }
 }

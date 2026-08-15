@@ -144,3 +144,5 @@ OpenAPI specification:
 docs/openapi/gcms-api.openapi.yaml
 docs/openapi/gcms-api.openapi.json
 ```
+
+Localization contract: [`LOCALIZATION.md`](LOCALIZATION.md)

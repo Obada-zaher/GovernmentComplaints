@@ -28,28 +28,28 @@ class OtpCodeNotification extends Notification
     {
         return (new MailMessage)
             ->subject($this->subject())
-            ->greeting('Hello '.$notifiable->name.',')
-            ->line('Government Complaints Management System received a request for '.$this->purposeLabel().'.')
-            ->line('Your verification code is: '.$this->otpCode)
-            ->line('This code expires in '.$this->expiresInMinutes.' minutes.')
-            ->line('If you did not request this code, please ignore this email.');
+            ->greeting(trans('api.mail.greeting', ['name' => $notifiable->name]))
+            ->line(trans('api.mail.otp.request', ['purpose' => $this->purposeLabel()]))
+            ->line(trans('api.mail.otp.code', ['code' => $this->otpCode]))
+            ->line(trans('api.mail.otp.expires', ['minutes' => $this->expiresInMinutes]))
+            ->line(trans('api.mail.ignore_code'));
     }
 
     private function subject(): string
     {
         return match ($this->purpose) {
-            'login' => 'GCMS Login Verification Code',
-            'verify_email' => 'GCMS Email Verification Code',
-            default => 'GCMS Account Verification Code',
+            'login' => trans('api.mail.subjects.login_otp'),
+            'verify_email' => trans('api.mail.subjects.email_otp'),
+            default => trans('api.mail.subjects.account_otp'),
         };
     }
 
     private function purposeLabel(): string
     {
         return match ($this->purpose) {
-            'login' => 'login verification',
-            'verify_email' => 'email verification',
-            default => 'account verification',
+            'login' => trans('api.mail.purposes.login'),
+            'verify_email' => trans('api.mail.purposes.email'),
+            default => trans('api.mail.purposes.account'),
         };
     }
 }

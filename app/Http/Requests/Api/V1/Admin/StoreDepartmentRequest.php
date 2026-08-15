@@ -18,8 +18,10 @@ class StoreDepartmentRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'name_ar' => ['nullable', 'string', 'max:255'],
             'code' => ['required', 'string', 'max:100', 'unique:departments,code'],
             'description' => ['nullable', 'string'],
+            'description_ar' => ['nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }

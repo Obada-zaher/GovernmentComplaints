@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasLocalizedDisplayFields;
 use Database\Factories\DepartmentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,12 +12,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Department extends Model
 {
     /** @use HasFactory<DepartmentFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasLocalizedDisplayFields, SoftDeletes;
 
     protected $fillable = [
         'name',
+        'name_ar',
         'code',
         'description',
+        'description_ar',
         'is_active',
     ];
 

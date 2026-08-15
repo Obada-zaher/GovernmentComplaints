@@ -10,10 +10,10 @@ class PrioritiesSeeder extends Seeder
     public function run(): void
     {
         $priorities = [
-            ['name' => 'Low', 'code' => 'low', 'level' => 1, 'color' => '#22c55e'],
-            ['name' => 'Medium', 'code' => 'medium', 'level' => 2, 'color' => '#eab308'],
-            ['name' => 'High', 'code' => 'high', 'level' => 3, 'color' => '#f97316'],
-            ['name' => 'Urgent', 'code' => 'urgent', 'level' => 4, 'color' => '#ef4444'],
+            ['name' => 'Low', 'name_ar' => 'منخفضة', 'code' => 'low', 'level' => 1, 'color' => '#22c55e'],
+            ['name' => 'Medium', 'name_ar' => 'متوسطة', 'code' => 'medium', 'level' => 2, 'color' => '#eab308'],
+            ['name' => 'High', 'name_ar' => 'عالية', 'code' => 'high', 'level' => 3, 'color' => '#f97316'],
+            ['name' => 'Urgent', 'name_ar' => 'عاجلة', 'code' => 'urgent', 'level' => 4, 'color' => '#ef4444'],
         ];
 
         foreach ($priorities as $priority) {
@@ -21,9 +21,11 @@ class PrioritiesSeeder extends Seeder
                 ['code' => $priority['code']],
                 [
                     'name' => $priority['name'],
+                    'name_ar' => $priority['name_ar'],
                     'level' => $priority['level'],
                     'color' => $priority['color'],
                     'description' => null,
+                    'description_ar' => null,
                 ],
             );
         }

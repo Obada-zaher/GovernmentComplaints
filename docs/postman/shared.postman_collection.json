@@ -1,7 +1,7 @@
 {
     "info": {
         "name": "Shared APIs",
-        "description": "APIs used by both web and mobile frontend teams. Use {{base_url}} and copy OTPs manually from Mailtrap or the configured email channel.",
+        "description": "APIs used by both web and mobile frontend teams. The collection injects Accept-Language: {{accept_language}} into every request; use en (default) or ar. Exercise localization with Departments and Categories: IDs/codes and JSON keys remain identical while display names/messages change.",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "item": [
@@ -538,7 +538,7 @@
                                 "departments"
                             ]
                         },
-                        "description": "Purpose: List active departments.\nRequired role: public\nRequired token: none\nExpected response: standard GCMS API envelope with success, message, data, and meta when present."
+                        "description": "Purpose: List active departments. Localization example: run with accept_language=en, then ar; name/message change while id/code and response keys remain stable.\nRequired role: public\nRequired token: none\nExpected response: standard GCMS API envelope with success, message, data, and meta when present."
                     },
                     "response": [],
                     "event": [
@@ -581,7 +581,7 @@
                                 }
                             ]
                         },
-                        "description": "Purpose: List active complaint categories. Optional query: department_id.\nRequired role: public\nRequired token: none\nExpected response: standard GCMS API envelope with success, message, data, and meta when present."
+                        "description": "Purpose: List active complaint categories. Optional query: department_id. Localization example: compare accept_language=en and ar; category and nested department display names change, but IDs/codes/nesting do not.\nRequired role: public\nRequired token: none\nExpected response: standard GCMS API envelope with success, message, data, and meta when present."
                     },
                     "response": [],
                     "event": [
@@ -711,6 +711,25 @@
                     ]
                 }
             ]
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "pm.request.headers.upsert({ key: 'Accept-Language', value: pm.variables.replaceIn('{{accept_language}}') || 'en' });"
+                ]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "accept_language",
+            "value": "en",
+            "type": "string",
+            "description": "Human-readable response language. Use en or ar; regional variants are also accepted."
         }
     ]
 }

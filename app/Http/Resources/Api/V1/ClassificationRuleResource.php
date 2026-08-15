@@ -16,12 +16,12 @@ class ClassificationRuleResource extends JsonResource
             'id' => $this->id,
             'department' => $this->whenLoaded('department', fn () => $this->department ? [
                 'id' => $this->department->id,
-                'name' => $this->department->name,
+                'name' => $this->department->localizedName(),
                 'code' => $this->department->code,
             ] : null),
             'category' => $this->whenLoaded('category', fn () => $this->category ? [
                 'id' => $this->category->id,
-                'name' => $this->category->name,
+                'name' => $this->category->localizedName(),
                 'code' => $this->category->code,
             ] : null),
             'department_id' => $this->department_id,

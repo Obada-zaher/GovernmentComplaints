@@ -64,6 +64,12 @@ Hosted:
 
 Replace `base_url` with the deployed backend API URL.
 
+## Localization
+
+All three collections inject `Accept-Language: {{accept_language}}`. The bundled environment defaults `accept_language` to `en`; set it to `ar` to test Arabic output. Regional values such as `ar-SY` and `en-US` also work.
+
+Use the shared Departments/Categories requests and the mobile or web Complaint/Classification requests as localization examples. Human-readable messages and department/category/priority `name` values change, while JSON keys, IDs, codes, statuses, roles, notification types, and classification method identifiers remain stable.
+
 ## Security
 
 Do not commit real tokens, OTPs, production URLs, or production secrets. The bundled credential examples are local/demo placeholders only.

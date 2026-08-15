@@ -19,6 +19,7 @@ class UpdatePriorityRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'name_ar' => ['nullable', 'string', 'max:255'],
             'code' => [
                 'sometimes',
                 'required',
@@ -29,6 +30,7 @@ class UpdatePriorityRequest extends FormRequest
             'level' => ['sometimes', 'required', 'integer', 'min:1', 'max:10'],
             'color' => ['nullable', 'string', 'max:50'],
             'description' => ['nullable', 'string'],
+            'description_ar' => ['nullable', 'string'],
         ];
     }
 }

@@ -14,9 +14,9 @@ class DepartmentResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'name' => $this->name,
+            'name' => $this->localizedName(),
             'code' => $this->code,
-            'description' => $this->description,
+            'description' => $this->localizedDescription(),
             'is_active' => $this->when($request->is('api/v1/admin/*'), (bool) $this->is_active),
             'created_at' => $this->when($request->is('api/v1/admin/*'), $this->created_at?->toISOString()),
             'updated_at' => $this->when($request->is('api/v1/admin/*'), $this->updated_at?->toISOString()),

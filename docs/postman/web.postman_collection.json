@@ -1,7 +1,7 @@
 {
     "info": {
         "name": "Web APIs",
-        "description": "Admin dashboard and employee dashboard APIs. Admin routes use {{admin_token}}; employee routes use {{employee_token}}.",
+        "description": "Admin dashboard and employee dashboard APIs. Admin routes use {{admin_token}}; employee routes use {{employee_token}}. Every request uses Accept-Language: {{accept_language}}; switch between en and ar to compare localized lookup, complaint, report, and classification display text.",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "item": [
@@ -2601,7 +2601,7 @@
                                 "preview"
                             ]
                         },
-                        "description": "Purpose: Preview rule-based classification.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "description": "Purpose: Preview rule-based classification. Localization example: set accept_language=ar and submit Arabic, English, or mixed text; classification evaluates all rules independently of UI language while only response display names/messages localize.\nRequired role: admin\nRequired token: {{admin_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
                         "auth": {
                             "type": "bearer",
                             "bearer": [
@@ -3001,6 +3001,25 @@
                     ]
                 }
             ]
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "pm.request.headers.upsert({ key: 'Accept-Language', value: pm.variables.replaceIn('{{accept_language}}') || 'en' });"
+                ]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "accept_language",
+            "value": "en",
+            "type": "string",
+            "description": "Human-readable response language. Set to ar for localized admin, report, and classification display text."
         }
     ]
 }

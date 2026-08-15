@@ -3,6 +3,8 @@
 use App\Console\Commands\CheckComplaintSlaBreaches;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\RoleMiddleware;
+use App\Http\Middleware\SetLocaleFromAcceptLanguage;
+use App\Support\LocalizedText;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -25,6 +27,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('complaints:check-sla')->everyFifteenMinutes();
     })
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->api(prepend: [
+            SetLocaleFromAcceptLanguage::class,
+        ]);
+
         $middleware->alias([
             'active.user' => EnsureUserIsActive::class,
             'role' => RoleMiddleware::class,
@@ -34,15 +40,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (ValidationException $exception) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed.',
-                'errors' => $exception->errors(),
+                'message' => LocalizedText::resolve('Validation failed.'),
+                'errors' => LocalizedText::errors($exception->errors()),
             ], 422);
         });
 
         $exceptions->render(function (AuthenticationException $exception) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthenticated.',
+                'message' => LocalizedText::resolve('Unauthenticated.'),
                 'errors' => [],
             ], 401);
         });
@@ -50,7 +56,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (ThrottleRequestsException $exception) {
             return response()->json([
                 'success' => false,
-                'message' => 'Too many requests. Please try again later.',
+                'message' => LocalizedText::resolve('Too many requests. Please try again later.'),
                 'errors' => [
                     'retry_after' => [$exception->getHeaders()['Retry-After'] ?? null],
                 ],

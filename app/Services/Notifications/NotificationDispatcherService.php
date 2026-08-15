@@ -9,6 +9,7 @@ use App\Models\Complaint;
 use App\Models\NotificationPreference;
 use App\Models\User;
 use App\Models\UserNotification;
+use App\Support\LocalizedText;
 
 class NotificationDispatcherService
 {
@@ -37,6 +38,8 @@ class NotificationDispatcherService
     ): ?UserNotification {
         $preferences = $this->preferencesFor($user);
         $payload = array_merge($this->complaintData($complaint), $data);
+        $title = LocalizedText::resolve($title) ?? $title;
+        $body = LocalizedText::resolve($body);
 
         $notification = $this->createDatabaseNotification($user, $type, $complaint, $title, $body, $payload, $once, $preferences);
 
@@ -132,7 +135,15 @@ class NotificationDispatcherService
             return;
         }
 
-        SendComplaintEmailNotificationJob::dispatch($user->id, $type, $complaint?->id, $title, $body, $notification?->id);
+        SendComplaintEmailNotificationJob::dispatch(
+            $user->id,
+            $type,
+            $complaint?->id,
+            $title,
+            $body,
+            $notification?->id,
+            app()->getLocale(),
+        );
     }
 
     /**

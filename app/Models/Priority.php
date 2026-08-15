@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasLocalizedDisplayFields;
 use Database\Factories\PriorityFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,14 +12,16 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Priority extends Model
 {
     /** @use HasFactory<PriorityFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasLocalizedDisplayFields, SoftDeletes;
 
     protected $fillable = [
         'name',
+        'name_ar',
         'code',
         'level',
         'color',
         'description',
+        'description_ar',
     ];
 
     protected function casts(): array

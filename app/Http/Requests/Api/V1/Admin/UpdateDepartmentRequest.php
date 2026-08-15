@@ -19,6 +19,7 @@ class UpdateDepartmentRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'name_ar' => ['nullable', 'string', 'max:255'],
             'code' => [
                 'sometimes',
                 'required',
@@ -27,6 +28,7 @@ class UpdateDepartmentRequest extends FormRequest
                 Rule::unique('departments', 'code')->ignore($this->route('department')),
             ],
             'description' => ['nullable', 'string'],
+            'description_ar' => ['nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }

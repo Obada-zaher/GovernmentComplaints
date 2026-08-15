@@ -23,6 +23,7 @@ class SendComplaintEmailNotificationJob implements ShouldQueue
         public readonly string $title,
         public readonly ?string $body = null,
         public readonly ?int $userNotificationId = null,
+        public readonly string $locale = 'en',
     ) {}
 
     public function handle(NotificationDeliveryLogService $deliveryLogs): void
@@ -44,11 +45,16 @@ class SendComplaintEmailNotificationJob implements ShouldQueue
             'status' => $complaint?->status,
         ];
 
+        $previousLocale = app()->getLocale();
+        app()->setLocale(in_array($this->locale, ['ar', 'en'], true) ? $this->locale : 'en');
+
         try {
             Notification::send($user, new ComplaintEventNotification($complaint, $this->type, $this->title, $this->body));
             $deliveryLogs->record($user, $userNotification, $complaint, 'email', $this->type, 'sent', $user->email, 'mailtrap', $payload);
         } catch (Throwable $exception) {
             $deliveryLogs->record($user, $userNotification, $complaint, 'email', $this->type, 'failed', $user->email, 'mailtrap', $payload, $exception->getMessage());
+        } finally {
+            app()->setLocale($previousLocale);
         }
     }
 }

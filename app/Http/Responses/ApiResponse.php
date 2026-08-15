@@ -2,6 +2,7 @@
 
 namespace App\Http\Responses;
 
+use App\Support\LocalizedText;
 use Illuminate\Http\JsonResponse;
 
 trait ApiResponse
@@ -10,7 +11,7 @@ trait ApiResponse
     {
         return response()->json([
             'success' => true,
-            'message' => $message,
+            'message' => LocalizedText::resolve($message),
             'data' => $data,
             'meta' => $meta,
         ], $status);
@@ -20,8 +21,8 @@ trait ApiResponse
     {
         return response()->json([
             'success' => false,
-            'message' => $message,
-            'errors' => $errors,
+            'message' => LocalizedText::resolve($message),
+            'errors' => LocalizedText::errors($errors),
         ], $status);
     }
 }

@@ -90,6 +90,10 @@ class ComplaintClassificationService
     public function normalize(string $text): string
     {
         $text = Str::lower($text);
+        $text = preg_replace('/[\x{064B}-\x{065F}\x{0670}\x{06D6}-\x{06ED}]/u', '', $text) ?? $text;
+        $text = str_replace('ـ', '', $text);
+        $text = str_replace(['أ', 'إ', 'آ', 'ٱ'], 'ا', $text);
+        $text = str_replace('ى', 'ي', $text);
         $text = preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $text) ?? $text;
         $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
 
@@ -215,7 +219,7 @@ class ComplaintClassificationService
 
         return [
             'id' => $department->id,
-            'name' => $department->name,
+            'name' => $department->localizedName(),
             'code' => $department->code,
         ];
     }
@@ -231,7 +235,7 @@ class ComplaintClassificationService
 
         return [
             'id' => $category->id,
-            'name' => $category->name,
+            'name' => $category->localizedName(),
             'code' => $category->code,
         ];
     }

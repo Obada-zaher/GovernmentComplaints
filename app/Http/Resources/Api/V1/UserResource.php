@@ -21,7 +21,7 @@ class UserResource extends JsonResource
             'role' => $this->role,
             'department' => $this->whenLoaded('department', fn () => $this->department ? [
                 'id' => $this->department->id,
-                'name' => $this->department->name,
+                'name' => $this->department->localizedName(),
                 'code' => $this->department->code,
             ] : null),
             'is_active' => $this->when(array_key_exists('is_active', $this->resource->getAttributes()), (bool) $this->is_active),

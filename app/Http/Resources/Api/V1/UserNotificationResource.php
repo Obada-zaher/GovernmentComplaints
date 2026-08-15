@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Support\LocalizedText;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,8 +16,8 @@ class UserNotificationResource extends JsonResource
         return [
             'id' => $this->id,
             'type' => $this->type,
-            'title' => $this->title,
-            'body' => $this->body,
+            'title' => LocalizedText::resolve($this->title),
+            'body' => LocalizedText::resolve($this->body),
             'data' => $this->data ?? [],
             'complaint' => $this->whenLoaded('complaint', fn () => $this->complaint ? [
                 'id' => $this->complaint->id,

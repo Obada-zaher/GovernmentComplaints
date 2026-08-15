@@ -19,6 +19,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ComplaintController extends Controller
 {
@@ -74,15 +75,32 @@ class ComplaintController extends Controller
     public function assign(AssignComplaintRequest $request, Complaint $complaint): JsonResponse
     {
         $data = $request->validated();
-        $employee = User::query()->findOrFail($data['assigned_employee_id']);
+        [$complaint, $assignmentChanged] = DB::transaction(function () use ($request, $complaint, $data): array {
+            $complaint = Complaint::query()->lockForUpdate()->findOrFail($complaint->id);
+            $employee = User::query()->lockForUpdate()->findOrFail($data['assigned_employee_id']);
 
-        if ($employee->role !== 'employee' || ! $employee->is_active || ! $employee->department_id || ! $complaint->department_id || (int) $employee->department_id !== (int) $complaint->department_id) {
-            return $this->errorResponse('The selected employee must be active and belong to the complaint department.', [
-                'assigned_employee_id' => ['The selected employee must be active and belong to the complaint department.'],
-            ], 422);
-        }
+            if ($employee->role !== 'employee' || ! $employee->is_active || ! $employee->department_id || ! $complaint->department_id || (int) $employee->department_id !== (int) $complaint->department_id) {
+                throw ValidationException::withMessages([
+                    'assigned_employee_id' => ['The selected employee must be active and belong to the complaint department.'],
+                ]);
+            }
 
-        $complaint = DB::transaction(function () use ($request, $complaint, $employee, $data): Complaint {
+            if ($complaint->status === 'submitted') {
+                throw ValidationException::withMessages([
+                    'status' => ['A submitted complaint must be moved to under review before assignment.'],
+                ]);
+            }
+
+            if (in_array($complaint->status, ['resolved', 'closed', 'rejected'], true)) {
+                throw ValidationException::withMessages([
+                    'status' => ['Terminal complaints cannot be assigned or reassigned.'],
+                ]);
+            }
+
+            if ((int) $complaint->assigned_employee_id === (int) $employee->id) {
+                return [$complaint->fresh(), false];
+            }
+
             $complaint->assignments()->create([
                 'assigned_by' => $request->user()->id,
                 'assigned_to' => $employee->id,
@@ -99,29 +117,31 @@ class ComplaintController extends Controller
                     $request->user(),
                     'assigned',
                     $data['note'] ?? 'Complaint assigned to employee.',
-                    true,
                 );
             } else {
                 $this->statusService->addTimelineNote($complaint, $request->user(), $data['note'] ?? 'Complaint assigned to employee.');
             }
 
-            return $complaint->fresh();
+            return [$complaint->fresh(), true];
         });
 
-        $this->notificationService->notifyUser(
-            $employee,
-            NotificationService::TYPE_COMPLAINT_ASSIGNED,
-            $complaint,
-            'Complaint assigned to you',
-            "Complaint {$complaint->complaint_number} has been assigned to you.",
-        );
-        $this->notificationService->notifyUser(
-            $complaint->citizen,
-            NotificationService::TYPE_COMPLAINT_ASSIGNED,
-            $complaint,
-            'Your complaint was assigned',
-            "Complaint {$complaint->complaint_number} has been assigned for processing.",
-        );
+        if ($assignmentChanged) {
+            $employee = $complaint->assignedEmployee()->firstOrFail();
+            $this->notificationService->notifyUser(
+                $employee,
+                NotificationService::TYPE_COMPLAINT_ASSIGNED,
+                $complaint,
+                'Complaint assigned to you',
+                "Complaint {$complaint->complaint_number} has been assigned to you.",
+            );
+            $this->notificationService->notifyUser(
+                $complaint->citizen,
+                NotificationService::TYPE_COMPLAINT_ASSIGNED,
+                $complaint,
+                'Your complaint was assigned',
+                "Complaint {$complaint->complaint_number} has been assigned for processing.",
+            );
+        }
 
         return $this->successResponse('Complaint assigned successfully.', new ComplaintResource($this->loadComplaint($complaint)));
     }
@@ -139,16 +159,25 @@ class ComplaintController extends Controller
             ], 422);
         }
 
-        $complaint->forceFill([
-            'department_id' => $data['department_id'],
-            'category_id' => $category?->id,
-            'assigned_employee_id' => $this->shouldClearAssignedEmployee($complaint, (int) $data['department_id'])
-                ? null
-                : $complaint->assigned_employee_id,
-            'due_at' => $this->slaDeadlineService->calculate((int) $data['department_id'], $category?->id, $complaint->priority_id),
-        ])->save();
+        $complaint = DB::transaction(function () use ($complaint, $data, $category, $request): Complaint {
+            $complaint = Complaint::query()->lockForUpdate()->findOrFail($complaint->id);
 
-        $this->statusService->addTimelineNote($complaint, $request->user(), $data['note'] ?? 'Complaint department/category updated.');
+            if ($this->wouldInvalidateAssignedEmployee($complaint, (int) $data['department_id'])) {
+                throw ValidationException::withMessages([
+                    'department_id' => ['Reassign the active complaint before changing its department.'],
+                ]);
+            }
+
+            $complaint->forceFill([
+                'department_id' => $data['department_id'],
+                'category_id' => $category?->id,
+                'due_at' => $this->slaDeadlineService->calculate((int) $data['department_id'], $category?->id, $complaint->priority_id),
+            ])->save();
+
+            $this->statusService->addTimelineNote($complaint, $request->user(), $data['note'] ?? 'Complaint department/category updated.');
+
+            return $complaint->fresh();
+        });
 
         return $this->successResponse('Complaint department updated successfully.', new ComplaintResource($this->loadComplaint($complaint)));
     }
@@ -213,7 +242,7 @@ class ComplaintController extends Controller
         };
     }
 
-    private function shouldClearAssignedEmployee(Complaint $complaint, int $newDepartmentId): bool
+    private function wouldInvalidateAssignedEmployee(Complaint $complaint, int $newDepartmentId): bool
     {
         $employee = $complaint->assignedEmployee;
 

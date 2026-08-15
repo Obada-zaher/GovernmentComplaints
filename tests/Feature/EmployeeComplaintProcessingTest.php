@@ -282,12 +282,34 @@ class EmployeeComplaintProcessingTest extends TestCase
         ]);
     }
 
-    public function test_employee_auto_assigns_unassigned_department_complaint_when_starting_progress(): void
+    public function test_employee_cannot_start_a_submitted_complaint_directly(): void
     {
         [$employee, $department, $category, $priority] = $this->actingAsEmployee();
         $complaint = $this->createComplaint($department, $category, $priority, [
             'assigned_employee_id' => null,
             'status' => 'submitted',
+        ]);
+
+        $this->patchJson('/api/v1/employee/complaints/'.$complaint->id.'/status', [
+            'status' => 'in_progress',
+            'note' => 'Started processing.',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['status']);
+
+        $this->assertDatabaseHas('complaints', [
+            'id' => $complaint->id,
+            'status' => 'submitted',
+            'assigned_employee_id' => null,
+        ]);
+        $this->assertSame(0, $complaint->assignments()->count());
+    }
+
+    public function test_employee_can_acquire_an_unassigned_under_review_complaint_when_starting_progress(): void
+    {
+        [$employee, $department, $category, $priority] = $this->actingAsEmployee();
+        $complaint = $this->createComplaint($department, $category, $priority, [
+            'assigned_employee_id' => null,
+            'status' => 'under_review',
         ]);
 
         $this->patchJson('/api/v1/employee/complaints/'.$complaint->id.'/status', [
@@ -302,6 +324,37 @@ class EmployeeComplaintProcessingTest extends TestCase
             'assigned_by' => $employee->id,
             'assigned_to' => $employee->id,
         ]);
+        $this->assertDatabaseHas('complaint_status_histories', [
+            'complaint_id' => $complaint->id,
+            'from_status' => 'under_review',
+            'to_status' => 'assigned',
+        ]);
+    }
+
+    public function test_only_one_employee_can_acquire_an_unassigned_under_review_complaint(): void
+    {
+        [$firstEmployee, $department, $category, $priority] = $this->actingAsEmployee();
+        $secondEmployee = User::factory()->employee()->create(['department_id' => $department->id]);
+        $complaint = $this->createComplaint($department, $category, $priority, [
+            'assigned_employee_id' => null,
+            'status' => 'under_review',
+        ]);
+
+        $this->patchJson('/api/v1/employee/complaints/'.$complaint->id.'/status', [
+            'status' => 'in_progress',
+        ])->assertOk();
+
+        Sanctum::actingAs($secondEmployee);
+        $this->patchJson('/api/v1/employee/complaints/'.$complaint->id.'/status', [
+            'status' => 'in_progress',
+        ])->assertForbidden();
+
+        $this->assertDatabaseHas('complaints', [
+            'id' => $complaint->id,
+            'assigned_employee_id' => $firstEmployee->id,
+            'status' => 'in_progress',
+        ]);
+        $this->assertSame(1, $complaint->assignments()->count());
     }
 
     public function test_unauthenticated_user_cannot_access_employee_or_admin_complaints(): void

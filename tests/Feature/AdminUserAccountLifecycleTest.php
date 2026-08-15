@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\Complaint;
 use App\Models\Department;
 use App\Models\User;
 use App\Services\Admin\AdminUserService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class AdminUserAccountLifecycleTest extends TestCase
@@ -166,6 +168,67 @@ class AdminUserAccountLifecycleTest extends TestCase
         $this->patchJson('/api/v1/admin/users/'.$replacementAdmin->id, ['role' => 'citizen'])
             ->assertOk()
             ->assertJsonPath('data.user.role', 'citizen');
+    }
+
+    public function test_employee_with_active_complaints_cannot_be_deactivated_moved_or_demoted(): void
+    {
+        $this->actingAsAdmin();
+        $department = Department::factory()->create();
+        $otherDepartment = Department::factory()->create();
+        $employee = User::factory()->employee()->create(['department_id' => $department->id]);
+        Complaint::factory()->create([
+            'department_id' => $department->id,
+            'assigned_employee_id' => $employee->id,
+            'status' => 'in_progress',
+        ]);
+
+        $this->patchJson('/api/v1/admin/users/'.$employee->id.'/status', ['is_active' => false])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['is_active']);
+        $this->patchJson('/api/v1/admin/users/'.$employee->id, ['department_id' => $otherDepartment->id])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['department_id']);
+        $this->patchJson('/api/v1/admin/users/'.$employee->id, ['role' => 'citizen'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['role']);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $employee->id,
+            'role' => 'employee',
+            'department_id' => $department->id,
+            'is_active' => true,
+        ]);
+    }
+
+    #[DataProvider('terminalComplaintStatuses')]
+    public function test_employee_account_changes_are_allowed_after_terminal_complaints(string $status): void
+    {
+        $this->actingAsAdmin();
+        $department = Department::factory()->create();
+        $otherDepartment = Department::factory()->create();
+        $employee = User::factory()->employee()->create(['department_id' => $department->id]);
+        Complaint::factory()->create([
+            'department_id' => $department->id,
+            'assigned_employee_id' => $employee->id,
+            'status' => $status,
+        ]);
+
+        $this->patchJson('/api/v1/admin/users/'.$employee->id, ['department_id' => $otherDepartment->id])
+            ->assertOk()
+            ->assertJsonPath('data.user.department.id', $otherDepartment->id);
+        $this->patchJson('/api/v1/admin/users/'.$employee->id.'/status', ['is_active' => false])
+            ->assertOk()
+            ->assertJsonPath('data.user.is_active', false);
+    }
+
+    /** @return array<string, array{0: string}> */
+    public static function terminalComplaintStatuses(): array
+    {
+        return [
+            'resolved' => ['resolved'],
+            'closed' => ['closed'],
+            'rejected' => ['rejected'],
+        ];
     }
 
     private function actingAsAdmin(): User

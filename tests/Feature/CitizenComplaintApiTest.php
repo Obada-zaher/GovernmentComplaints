@@ -252,7 +252,8 @@ class CitizenComplaintApiTest extends TestCase
         ]);
 
         $response->assertCreated()
-            ->assertJsonPath('data.status', 'submitted');
+            ->assertJsonPath('data.status', 'submitted')
+            ->assertJsonPath('data.assigned_employee_id', null);
     }
 
     public function test_first_timeline_record_is_created(): void

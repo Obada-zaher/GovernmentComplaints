@@ -166,6 +166,7 @@ class AdminEmployeesApiTest extends TestCase
             'department_id' => $department->id,
             'category_id' => $category->id,
             'priority_id' => Priority::factory()->create()->id,
+            'status' => 'under_review',
         ]);
 
         $employeeId = $this->getJson('/api/v1/admin/employees?department_id='.$department->id)

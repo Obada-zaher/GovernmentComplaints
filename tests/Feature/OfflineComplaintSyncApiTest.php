@@ -62,6 +62,8 @@ class OfflineComplaintSyncApiTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('message', 'Offline complaint synced successfully.')
             ->assertJsonPath('data.complaint.title', 'Offline water leakage')
+            ->assertJsonPath('data.complaint.status', 'submitted')
+            ->assertJsonPath('data.complaint.assigned_employee_id', null)
             ->assertJsonPath('data.offline_submission.status', 'synced');
     }
 

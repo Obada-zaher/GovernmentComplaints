@@ -24,10 +24,10 @@ class ComplaintStatusService
         'escalated' => ['assigned', 'in_progress', 'resolved'],
     ];
 
-    public function updateStatus(Complaint $complaint, User $changedBy, string $toStatus, ?string $note = null, bool $allowAssignmentShortcut = false): Complaint
+    public function updateStatus(Complaint $complaint, User $changedBy, string $toStatus, ?string $note = null): Complaint
     {
-        return DB::transaction(function () use ($complaint, $changedBy, $toStatus, $note, $allowAssignmentShortcut): Complaint {
-            $complaint->refresh();
+        return DB::transaction(function () use ($complaint, $changedBy, $toStatus, $note): Complaint {
+            $complaint = Complaint::query()->lockForUpdate()->findOrFail($complaint->id);
             $fromStatus = $complaint->status;
 
             if ($fromStatus === $toStatus) {
@@ -36,11 +36,13 @@ class ComplaintStatusService
                 ]);
             }
 
-            if (! $this->canTransition($fromStatus, $toStatus, $allowAssignmentShortcut)) {
+            if (! $this->canTransition($fromStatus, $toStatus)) {
                 throw ValidationException::withMessages([
                     'status' => ["Invalid status transition from {$fromStatus} to {$toStatus}."],
                 ]);
             }
+
+            $this->ensureAssigneeForStatus($complaint, $toStatus);
 
             $complaint->forceFill([
                 'status' => $toStatus,
@@ -57,20 +59,29 @@ class ComplaintStatusService
 
     public function addTimelineNote(Complaint $complaint, User $changedBy, ?string $note = null): void
     {
-        if (! $complaint->first_response_at) {
-            $complaint->forceFill(['first_response_at' => now()])->save();
-        }
+        DB::transaction(function () use ($complaint, $changedBy, $note): void {
+            $complaint = Complaint::query()->lockForUpdate()->findOrFail($complaint->id);
 
-        $this->createHistory($complaint, $changedBy, $complaint->status, $complaint->status, $note);
+            if (! $complaint->first_response_at) {
+                $complaint->forceFill(['first_response_at' => now()])->save();
+            }
+
+            $this->createHistory($complaint, $changedBy, $complaint->status, $complaint->status, $note);
+        });
     }
 
-    private function canTransition(string $fromStatus, string $toStatus, bool $allowAssignmentShortcut): bool
+    private function canTransition(string $fromStatus, string $toStatus): bool
     {
-        if ($allowAssignmentShortcut && $fromStatus === 'submitted' && $toStatus === 'assigned') {
-            return true;
-        }
-
         return in_array($toStatus, $this->allowedTransitions[$fromStatus] ?? [], true);
+    }
+
+    private function ensureAssigneeForStatus(Complaint $complaint, string $toStatus): void
+    {
+        if (in_array($toStatus, ['assigned', 'in_progress', 'waiting_citizen'], true) && ! $complaint->assigned_employee_id) {
+            throw ValidationException::withMessages([
+                'assigned_employee_id' => ["A complaint in {$toStatus} status must have an assigned employee."],
+            ]);
+        }
     }
 
     private function createHistory(Complaint $complaint, User $changedBy, string $fromStatus, string $toStatus, ?string $note): void

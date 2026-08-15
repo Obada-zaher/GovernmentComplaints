@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ComplaintController extends Controller
 {
@@ -97,9 +98,15 @@ class ComplaintController extends Controller
 
         $complaint = DB::transaction(function () use ($request, $complaint, $data): Complaint {
             $employee = $request->user();
-            $complaint->refresh();
+            $complaint = Complaint::query()->lockForUpdate()->findOrFail($complaint->id);
 
-            if (! $complaint->assigned_employee_id && (int) $complaint->department_id === (int) $employee->department_id && $data['status'] === 'in_progress') {
+            if (! $this->canAccess($complaint, $employee)) {
+                throw ValidationException::withMessages([
+                    'complaint' => ['The complaint is no longer available for processing.'],
+                ]);
+            }
+
+            if ($complaint->status === 'under_review' && ! $complaint->assigned_employee_id && (int) $complaint->department_id === (int) $employee->department_id && $data['status'] === 'in_progress') {
                 $complaint->assignments()->create([
                     'assigned_by' => $employee->id,
                     'assigned_to' => $employee->id,
@@ -109,9 +116,7 @@ class ComplaintController extends Controller
                 ]);
                 $complaint->forceFill(['assigned_employee_id' => $employee->id])->save();
 
-                if (in_array($complaint->status, ['submitted', 'under_review'], true)) {
-                    $complaint = $this->statusService->updateStatus($complaint, $employee, 'assigned', 'Employee self-assigned before processing.', true);
-                }
+                $complaint = $this->statusService->updateStatus($complaint, $employee, 'assigned', 'Employee self-assigned before processing.');
             }
 
             return $this->statusService->updateStatus($complaint, $employee, $data['status'], $data['note'] ?? null);

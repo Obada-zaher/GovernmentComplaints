@@ -36,6 +36,7 @@ The web collection's **Admin Management → Admin User Management** folder conta
 - `PATCH /admin/users/{{user_id}}` updates safe profile, role, or department fields only. Do not send `is_active` there; it returns `422`.
 - Use `PATCH /admin/users/{{user_id}}/status` to deactivate or reactivate an account. Deactivation revokes all Sanctum tokens; reactivation does not restore them.
 - `GET /admin/employees` remains the employee-only lookup for complaint assignment. The target employee must be active and in the complaint's department.
+- Before `PATCH /admin/complaints/{{complaint_id}}/assign`, move a submitted complaint to `under_review`; terminal complaints cannot be assigned.
 
 ## OTP Flow
 

@@ -83,7 +83,7 @@ Employees require an active department. Citizens and admins are system-wide and 
 
 Use the general user update endpoint for safe profile, role, and department changes only. It rejects `is_active`; account lifecycle changes must use `/admin/users/{user}/status`. Deactivation revokes every Sanctum token, and reactivation does not restore old tokens, so the user must authenticate again. Inactive accounts cannot access protected APIs. Admins cannot deactivate themselves or demote their own role, and the final active admin cannot be deactivated or demoted.
 
-Complaint assignment requires an active employee with a department matching the complaint department. Employees can access complaints assigned to themselves and unassigned complaints in their own department, but never coworker assignments or other departments' complaints.
+Complaint assignment requires an active employee with a department matching the complaint department. A submitted complaint must first move to `under_review`; terminal complaints cannot be assigned. Employees can access complaints assigned to themselves and unassigned complaints in their own department, but never coworker assignments or other departments' complaints.
 
 ## Frontend Integration Order
 

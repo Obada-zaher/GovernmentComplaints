@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class AdminComplaintManagementTest extends TestCase
@@ -113,7 +114,7 @@ class AdminComplaintManagementTest extends TestCase
         $this->actingAsAdmin();
         [$department, $category, $priority] = $this->setupLookups();
         $employee = User::factory()->employee()->create(['department_id' => $department->id]);
-        $complaint = $this->createComplaint($department, $category, $priority);
+        $complaint = $this->createComplaint($department, $category, $priority, ['status' => 'under_review']);
 
         $this->patchJson('/api/v1/admin/complaints/'.$complaint->id.'/assign', [
             'assigned_employee_id' => $employee->id,
@@ -128,7 +129,7 @@ class AdminComplaintManagementTest extends TestCase
         ]);
     }
 
-    public function test_assigning_complaint_moves_status_to_assigned_when_applicable(): void
+    public function test_admin_cannot_assign_a_submitted_complaint(): void
     {
         $this->actingAsAdmin();
         [$department, $category, $priority] = $this->setupLookups();
@@ -137,8 +138,15 @@ class AdminComplaintManagementTest extends TestCase
 
         $this->patchJson('/api/v1/admin/complaints/'.$complaint->id.'/assign', [
             'assigned_employee_id' => $employee->id,
-        ])->assertOk()
-            ->assertJsonPath('data.status', 'assigned');
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['status']);
+
+        $this->assertDatabaseHas('complaints', [
+            'id' => $complaint->id,
+            'status' => 'submitted',
+            'assigned_employee_id' => null,
+        ]);
+        $this->assertSame(0, $complaint->assignments()->count());
     }
 
     public function test_assigning_complaint_creates_timeline_record(): void
@@ -261,7 +269,7 @@ class AdminComplaintManagementTest extends TestCase
             ->assertJsonPath('data.category.id', $newCategory->id);
     }
 
-    public function test_changing_department_clears_assigned_employee_if_department_mismatch(): void
+    public function test_changing_department_cannot_orphan_an_active_assignment(): void
     {
         $this->actingAsAdmin();
         $oldDepartment = Department::factory()->create();
@@ -270,17 +278,90 @@ class AdminComplaintManagementTest extends TestCase
         $complaint = Complaint::factory()->create([
             'department_id' => $oldDepartment->id,
             'assigned_employee_id' => $employee->id,
+            'status' => 'assigned',
         ]);
 
         $this->patchJson('/api/v1/admin/complaints/'.$complaint->id.'/department', [
             'department_id' => $newDepartment->id,
-        ])->assertOk()
-            ->assertJsonPath('data.assigned_employee', null);
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['department_id']);
 
         $this->assertDatabaseHas('complaints', [
             'id' => $complaint->id,
+            'department_id' => $oldDepartment->id,
+            'assigned_employee_id' => $employee->id,
+        ]);
+    }
+
+    public function test_generic_status_endpoint_cannot_mark_a_complaint_assigned_without_an_employee(): void
+    {
+        $this->actingAsAdmin();
+        [$department, $category, $priority] = $this->setupLookups();
+        $complaint = $this->createComplaint($department, $category, $priority, ['status' => 'under_review']);
+
+        $this->patchJson('/api/v1/admin/complaints/'.$complaint->id.'/status', [
+            'status' => 'assigned',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['assigned_employee_id']);
+
+        $this->assertDatabaseHas('complaints', [
+            'id' => $complaint->id,
+            'status' => 'under_review',
             'assigned_employee_id' => null,
         ]);
+    }
+
+    public function test_assigning_the_same_employee_is_idempotent(): void
+    {
+        $this->actingAsAdmin();
+        [$department, $category, $priority] = $this->setupLookups();
+        $employee = User::factory()->employee()->create(['department_id' => $department->id]);
+        $complaint = $this->createComplaint($department, $category, $priority, [
+            'status' => 'assigned',
+            'assigned_employee_id' => $employee->id,
+        ]);
+        $complaint->assignments()->create([
+            'assigned_by' => $this->actingAsAdmin()->id,
+            'assigned_to' => $employee->id,
+            'department_id' => $department->id,
+            'assigned_at' => now(),
+        ]);
+
+        $this->patchJson('/api/v1/admin/complaints/'.$complaint->id.'/assign', [
+            'assigned_employee_id' => $employee->id,
+        ])->assertOk()
+            ->assertJsonPath('data.assigned_employee.id', $employee->id)
+            ->assertJsonPath('data.status', 'assigned');
+
+        $this->assertSame(1, $complaint->assignments()->count());
+        $this->assertSame(0, $complaint->notifications()->count());
+    }
+
+    #[DataProvider('terminalStatuses')]
+    public function test_admin_cannot_assign_terminal_complaints(string $status): void
+    {
+        $this->actingAsAdmin();
+        [$department, $category, $priority] = $this->setupLookups();
+        $employee = User::factory()->employee()->create(['department_id' => $department->id]);
+        $complaint = $this->createComplaint($department, $category, $priority, ['status' => $status]);
+
+        $this->patchJson('/api/v1/admin/complaints/'.$complaint->id.'/assign', [
+            'assigned_employee_id' => $employee->id,
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['status']);
+
+        $this->assertDatabaseHas('complaints', ['id' => $complaint->id, 'status' => $status, 'assigned_employee_id' => null]);
+        $this->assertSame(0, $complaint->assignments()->count());
+    }
+
+    /** @return array<string, array{0: string}> */
+    public static function terminalStatuses(): array
+    {
+        return [
+            'resolved' => ['resolved'],
+            'closed' => ['closed'],
+            'rejected' => ['rejected'],
+        ];
     }
 
     public function test_admin_can_change_priority(): void

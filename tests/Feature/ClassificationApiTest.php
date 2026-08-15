@@ -241,7 +241,9 @@ class ClassificationApiTest extends TestCase
         ])->assertCreated()
             ->assertJsonPath('data.department.id', $department->id)
             ->assertJsonPath('data.category.id', $category->id)
-            ->assertJsonPath('data.classification.auto_assigned', true);
+            ->assertJsonPath('data.classification.auto_assigned', true)
+            ->assertJsonPath('data.status', 'submitted')
+            ->assertJsonPath('data.assigned_employee_id', null);
     }
 
     public function test_complaint_with_explicit_category_is_not_overwritten(): void

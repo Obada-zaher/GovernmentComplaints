@@ -45,6 +45,7 @@ class ComplaintService
                 'title' => $data['title'],
                 'description' => $data['description'],
                 'status' => 'submitted',
+                'assigned_employee_id' => null,
                 'latitude' => $data['latitude'] ?? null,
                 'longitude' => $data['longitude'] ?? null,
                 'address' => $data['address'] ?? null,

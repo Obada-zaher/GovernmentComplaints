@@ -618,7 +618,7 @@ class PushSmsNotificationInfrastructureTest extends TestCase
             'department_id' => $department->id,
             'category_id' => $category->id,
             'priority_id' => $priority->id,
-            'status' => 'submitted',
+            'status' => 'under_review',
         ]);
 
         return [$admin, $employee, $complaint];

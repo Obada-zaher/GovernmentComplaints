@@ -2,6 +2,7 @@
 
 namespace App\Services\Admin;
 
+use App\Models\Complaint;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -31,6 +32,7 @@ class AdminUserService
         return DB::transaction(function () use ($user, $data, $actor): User {
             $user = User::query()->lockForUpdate()->findOrFail($user->id);
             $newRole = $data['role'] ?? $user->role;
+            $newAttributes = $this->attributes($data, $user);
 
             if ($user->id === $actor->id && $user->role === 'admin' && $newRole !== 'admin') {
                 throw ValidationException::withMessages([
@@ -39,7 +41,8 @@ class AdminUserService
             }
 
             $this->ensureActiveAdminRemains($user, $newRole !== 'admin');
-            $user->update($this->attributes($data, $user));
+            $this->ensureEmployeeWorkIsNotOrphaned($user, $newRole, $newAttributes['department_id']);
+            $user->update($newAttributes);
 
             return $user->fresh('department');
         });
@@ -59,6 +62,7 @@ class AdminUserService
             if (! $isActive) {
                 if ($user->is_active) {
                     $this->ensureActiveAdminRemains($user, true);
+                    $this->ensureEmployeeWorkIsNotOrphaned($user, $user->role, $user->department_id, true);
                     $user->forceFill(['is_active' => false])->save();
                 }
 
@@ -113,5 +117,34 @@ class AdminUserService
                 'role' => ['At least one active admin account must remain.'],
             ]);
         }
+    }
+
+    private function ensureEmployeeWorkIsNotOrphaned(User $user, string $newRole, ?int $newDepartmentId, bool $deactivating = false): void
+    {
+        if ($user->role !== 'employee') {
+            return;
+        }
+
+        $wouldOrphan = $deactivating || $newRole !== 'employee' || (int) $newDepartmentId !== (int) $user->department_id;
+
+        if (! $wouldOrphan) {
+            return;
+        }
+
+        $hasActiveWork = Complaint::query()
+            ->where('assigned_employee_id', $user->id)
+            ->whereIn('status', ['assigned', 'in_progress', 'waiting_citizen', 'escalated'])
+            ->lockForUpdate()
+            ->exists();
+
+        if (! $hasActiveWork) {
+            return;
+        }
+
+        $field = $deactivating ? 'is_active' : ($newRole !== 'employee' ? 'role' : 'department_id');
+
+        throw ValidationException::withMessages([
+            $field => ['Reassign the employee\'s active complaints before changing this account.'],
+        ]);
     }
 }

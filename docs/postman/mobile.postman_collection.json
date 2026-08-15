@@ -389,7 +389,7 @@
                                 "complaints"
                             ]
                         },
-                        "description": "Purpose: List complaints owned by the authenticated citizen.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
+                        "description": "Purpose: List complaints owned by the authenticated citizen. Optional sort values are newest (default), oldest, and sla; sla puts complaints with a due_at deadline first, ordered by the earliest deadline.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with success, message, data, and meta when present.",
                         "auth": {
                             "type": "bearer",
                             "bearer": [

@@ -189,6 +189,7 @@ paths:
       description: Requires `auth:sanctum` and `role:citizen`.
       parameters:
         - { name: status, in: query, schema: { type: string } }
+        - { name: sort, in: query, description: "Complaint ordering. Unknown values preserve newest-first ordering.", schema: { type: string, enum: [newest, oldest, sla], default: newest } }
         - { name: per_page, in: query, schema: { type: integer, maximum: 100 } }
       responses:
         "200": { $ref: "#/components/responses/PaginatedSuccess" }

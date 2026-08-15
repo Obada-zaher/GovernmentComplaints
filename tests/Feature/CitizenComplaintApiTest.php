@@ -461,6 +461,134 @@ class CitizenComplaintApiTest extends TestCase
             ->assertJsonPath('data.complaints.0.id', $ownComplaint->id);
     }
 
+    public function test_missing_sort_defaults_to_newest_first(): void
+    {
+        $citizen = $this->actingAsCitizen();
+        $older = $this->complaintForCitizen($citizen, ['created_at' => '2026-07-01 10:00:00']);
+        $newer = $this->complaintForCitizen($citizen, ['created_at' => '2026-07-02 10:00:00']);
+
+        $this->getJson('/api/v1/citizen/complaints?per_page=10')
+            ->assertOk()
+            ->assertJsonPath('data.complaints.0.id', $newer->id)
+            ->assertJsonPath('data.complaints.1.id', $older->id);
+    }
+
+    public function test_newest_sort_orders_by_created_at_then_id_descending(): void
+    {
+        $citizen = $this->actingAsCitizen();
+        $first = $this->complaintForCitizen($citizen, ['created_at' => '2026-07-01 10:00:00']);
+        $second = $this->complaintForCitizen($citizen, ['created_at' => '2026-07-01 10:00:00']);
+        $newest = $this->complaintForCitizen($citizen, ['created_at' => '2026-07-02 10:00:00']);
+
+        $this->getJson('/api/v1/citizen/complaints?sort=newest&per_page=10')
+            ->assertOk()
+            ->assertJsonPath('data.complaints.0.id', $newest->id)
+            ->assertJsonPath('data.complaints.1.id', $second->id)
+            ->assertJsonPath('data.complaints.2.id', $first->id);
+    }
+
+    public function test_oldest_sort_orders_by_created_at_then_id_ascending(): void
+    {
+        $citizen = $this->actingAsCitizen();
+        $first = $this->complaintForCitizen($citizen, ['created_at' => '2026-07-01 10:00:00']);
+        $second = $this->complaintForCitizen($citizen, ['created_at' => '2026-07-01 10:00:00']);
+        $newest = $this->complaintForCitizen($citizen, ['created_at' => '2026-07-02 10:00:00']);
+
+        $this->getJson('/api/v1/citizen/complaints?sort=oldest&per_page=10')
+            ->assertOk()
+            ->assertJsonPath('data.complaints.0.id', $first->id)
+            ->assertJsonPath('data.complaints.1.id', $second->id)
+            ->assertJsonPath('data.complaints.2.id', $newest->id);
+    }
+
+    public function test_sla_sort_orders_deadlines_first_and_null_deadlines_last(): void
+    {
+        $citizen = $this->actingAsCitizen();
+        $later = $this->complaintForCitizen($citizen, [
+            'due_at' => '2026-07-03 10:00:00',
+            'created_at' => '2026-07-01 10:00:00',
+        ]);
+        $earlier = $this->complaintForCitizen($citizen, [
+            'due_at' => '2026-07-02 10:00:00',
+            'created_at' => '2026-07-02 10:00:00',
+        ]);
+        $newerNull = $this->complaintForCitizen($citizen, [
+            'due_at' => null,
+            'created_at' => '2026-07-04 10:00:00',
+        ]);
+        $olderNull = $this->complaintForCitizen($citizen, [
+            'due_at' => null,
+            'created_at' => '2026-07-03 10:00:00',
+        ]);
+
+        $this->getJson('/api/v1/citizen/complaints?sort=sla&per_page=10')
+            ->assertOk()
+            ->assertJsonPath('data.complaints.0.id', $earlier->id)
+            ->assertJsonPath('data.complaints.1.id', $later->id)
+            ->assertJsonPath('data.complaints.2.id', $newerNull->id)
+            ->assertJsonPath('data.complaints.3.id', $olderNull->id);
+    }
+
+    public function test_sorting_happens_before_pagination(): void
+    {
+        $citizen = $this->actingAsCitizen();
+        $complaints = collect(range(1, 5))->map(fn (int $day) => $this->complaintForCitizen($citizen, [
+            'created_at' => "2026-07-0{$day} 10:00:00",
+        ]));
+
+        $firstPage = $this->getJson('/api/v1/citizen/complaints?sort=oldest&per_page=2&page=1')
+            ->assertOk()
+            ->json('data.complaints');
+        $secondPage = $this->getJson('/api/v1/citizen/complaints?sort=oldest&per_page=2&page=2')
+            ->assertOk()
+            ->json('data.complaints');
+
+        $this->assertSame([$complaints[0]->id, $complaints[1]->id], collect($firstPage)->pluck('id')->all());
+        $this->assertSame([$complaints[2]->id, $complaints[3]->id], collect($secondPage)->pluck('id')->all());
+    }
+
+    public function test_sort_combines_with_status_filter_and_excludes_other_citizens(): void
+    {
+        $citizen = $this->actingAsCitizen();
+        $first = $this->complaintForCitizen($citizen, [
+            'status' => 'submitted',
+            'created_at' => '2026-07-01 10:00:00',
+        ]);
+        $second = $this->complaintForCitizen($citizen, [
+            'status' => 'submitted',
+            'created_at' => '2026-07-02 10:00:00',
+        ]);
+        $this->complaintForCitizen($citizen, [
+            'status' => 'resolved',
+            'created_at' => '2026-07-03 10:00:00',
+        ]);
+        $otherCitizenComplaint = Complaint::factory()->create([
+            'status' => 'submitted',
+            'created_at' => '2026-07-04 10:00:00',
+            'due_at' => '2026-07-01 10:00:00',
+        ]);
+
+        $response = $this->getJson('/api/v1/citizen/complaints?status=submitted&sort=oldest&per_page=10')
+            ->assertOk()
+            ->assertJsonPath('data.complaints.0.id', $first->id)
+            ->assertJsonPath('data.complaints.1.id', $second->id)
+            ->assertJsonCount(2, 'data.complaints');
+
+        $this->assertNotContains($otherCitizenComplaint->id, collect($response->json('data.complaints'))->pluck('id')->all());
+    }
+
+    public function test_unknown_sort_preserves_newest_first_behavior(): void
+    {
+        $citizen = $this->actingAsCitizen();
+        $older = $this->complaintForCitizen($citizen, ['created_at' => '2026-07-01 10:00:00']);
+        $newer = $this->complaintForCitizen($citizen, ['created_at' => '2026-07-02 10:00:00']);
+
+        $this->getJson('/api/v1/citizen/complaints?sort=unsupported&per_page=10')
+            ->assertOk()
+            ->assertJsonPath('data.complaints.0.id', $newer->id)
+            ->assertJsonPath('data.complaints.1.id', $older->id);
+    }
+
     public function test_citizen_cannot_view_another_citizen_complaint(): void
     {
         $this->actingAsCitizen();
@@ -615,5 +743,15 @@ class CitizenComplaintApiTest extends TestCase
         $priority = Priority::factory()->create();
 
         return [$department, $category, $priority];
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function complaintForCitizen(User $citizen, array $attributes = []): Complaint
+    {
+        return Complaint::factory()->create(array_merge([
+            'citizen_id' => $citizen->id,
+        ], $attributes));
     }
 }

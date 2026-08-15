@@ -9,6 +9,7 @@ use App\Http\Resources\Api\V1\ComplaintResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\Complaint;
 use App\Services\ComplaintService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -21,7 +22,7 @@ class ComplaintController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $complaints = Complaint::query()
+        $query = Complaint::query()
             ->with(['department', 'category', 'priority'])
             ->where('citizen_id', $request->user()->id)
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->query('status')))
@@ -38,9 +39,11 @@ class ComplaintController extends Controller
                         ->orWhere('description', 'like', "%{$search}%")
                         ->orWhere('complaint_number', 'like', "%{$search}%");
                 });
-            })
-            ->latest()
-            ->paginate($this->perPage($request));
+            });
+
+        $this->applySort($query, $request->query('sort'));
+
+        $complaints = $query->paginate($this->perPage($request));
 
         return $this->successResponse('Complaints retrieved successfully.', [
             'complaints' => ComplaintResource::collection($complaints->getCollection()),
@@ -94,6 +97,19 @@ class ComplaintController extends Controller
     private function perPage(Request $request): int
     {
         return min(max((int) $request->query('per_page', 15), 1), 100);
+    }
+
+    private function applySort(Builder $query, ?string $sort): void
+    {
+        match ($sort) {
+            'oldest' => $query->orderBy('created_at')->orderBy('id'),
+            'sla' => $query
+                ->orderByRaw('CASE WHEN due_at IS NULL THEN 1 ELSE 0 END')
+                ->orderBy('due_at')
+                ->orderByDesc('created_at')
+                ->orderByDesc('id'),
+            default => $query->orderByDesc('created_at')->orderByDesc('id'),
+        };
     }
 
     /**

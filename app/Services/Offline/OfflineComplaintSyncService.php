@@ -6,6 +6,7 @@ use App\Models\Complaint;
 use App\Models\OfflineSubmission;
 use App\Models\User;
 use App\Services\ComplaintService;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -29,34 +30,46 @@ class OfflineComplaintSyncService
             ->first();
 
         if ($offlineSubmission && $offlineSubmission->status === 'synced' && $offlineSubmission->syncedComplaint) {
-            return [
-                'offline_submission' => $offlineSubmission,
-                'complaint' => $offlineSubmission->syncedComplaint->load([
-                    'department',
-                    'category',
-                    'priority',
-                    'assignedEmployee',
-                    'attachments',
-                    'statusHistories.changedBy',
-                ]),
-                'idempotent' => true,
-            ];
+            return $this->result($offlineSubmission, true);
         }
 
-        $offlineSubmission ??= new OfflineSubmission([
-            'citizen_id' => $citizen->id,
-            'client_uuid' => $data['client_uuid'],
-        ]);
-
-        $offlineSubmission->forceFill([
-            'payload' => $this->payloadForStorage($data),
-            'status' => 'pending',
-            'error_message' => null,
-            'submitted_offline_at' => $this->submittedOfflineAt($data),
-        ])->save();
+        if (! $offlineSubmission) {
+            try {
+                $offlineSubmission = OfflineSubmission::query()->create([
+                    'citizen_id' => $citizen->id,
+                    'client_uuid' => $data['client_uuid'],
+                    'payload' => $this->payloadForStorage($data),
+                    'status' => 'pending',
+                    'submitted_offline_at' => $this->submittedOfflineAt($data),
+                ]);
+            } catch (UniqueConstraintViolationException) {
+                $offlineSubmission = OfflineSubmission::query()
+                    ->with('syncedComplaint')
+                    ->where('citizen_id', $citizen->id)
+                    ->where('client_uuid', $data['client_uuid'])
+                    ->firstOrFail();
+            }
+        }
 
         try {
-            $complaint = DB::transaction(function () use ($citizen, $data, $offlineSubmission): Complaint {
+            return DB::transaction(function () use ($citizen, $data, $offlineSubmission): array {
+                $offlineSubmission = OfflineSubmission::query()
+                    ->where('citizen_id', $citizen->id)
+                    ->where('client_uuid', $data['client_uuid'])
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($offlineSubmission->status === 'synced' && $offlineSubmission->syncedComplaint) {
+                    return $this->result($offlineSubmission, true);
+                }
+
+                $offlineSubmission->forceFill([
+                    'payload' => $this->payloadForStorage($data),
+                    'status' => 'pending',
+                    'error_message' => null,
+                    'submitted_offline_at' => $this->submittedOfflineAt($data),
+                ])->save();
+
                 $complaint = $this->complaintService->create($citizen, $this->complaintPayload($data));
 
                 $offlineSubmission->forceFill([
@@ -66,21 +79,38 @@ class OfflineComplaintSyncService
                     'synced_at' => now(),
                 ])->save();
 
-                return $complaint;
+                return [
+                    'offline_submission' => $offlineSubmission->fresh('syncedComplaint'),
+                    'complaint' => $complaint,
+                    'idempotent' => false,
+                ];
             });
         } catch (Throwable $exception) {
-            $offlineSubmission->forceFill([
+            $offlineSubmission->fresh()->forceFill([
                 'status' => 'failed',
                 'error_message' => $exception->getMessage(),
             ])->save();
 
             throw $exception;
         }
+    }
 
+    /**
+     * @return array{offline_submission: OfflineSubmission, complaint: Complaint, idempotent: bool}
+     */
+    private function result(OfflineSubmission $offlineSubmission, bool $idempotent): array
+    {
         return [
-            'offline_submission' => $offlineSubmission->fresh('syncedComplaint'),
-            'complaint' => $complaint,
-            'idempotent' => false,
+            'offline_submission' => $offlineSubmission,
+            'complaint' => $offlineSubmission->syncedComplaint->load([
+                'department',
+                'category',
+                'priority',
+                'assignedEmployee',
+                'attachments',
+                'statusHistories.changedBy',
+            ]),
+            'idempotent' => $idempotent,
         ];
     }
 

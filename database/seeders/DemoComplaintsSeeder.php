@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Complaint;
 use App\Models\ComplaintAssignment;
 use App\Models\ComplaintCategory;
+use App\Models\ComplaintInformationRequest;
 use App\Models\ComplaintStatusHistory;
 use App\Models\Department;
 use App\Models\Priority;
@@ -94,9 +95,12 @@ class DemoComplaintsSeeder extends Seeder
                 $complaint->notifications()->delete();
                 $complaint->statusHistories()->delete();
                 $complaint->assignments()->delete();
+                $complaint->informationRequests()->delete();
             }
 
             $timeline = $this->timeline($scenario, $createdAt, $resolutionHours, $citizen, $admin, $currentEmployee);
+            $pauseSeconds = $this->pausedSeconds($timeline);
+            $isWaiting = $scenario['status'] === 'waiting_citizen';
             $lastEvent = $timeline[array_key_last($timeline)];
             $firstResponseAt = count($timeline) > 1 ? $timeline[1]['at'] : null;
             $resolvedEvent = collect($timeline)->firstWhere('to_status', 'resolved');
@@ -117,7 +121,9 @@ class DemoComplaintsSeeder extends Seeder
                 'source' => $scenario['source'],
                 'client_uuid' => $scenario['source'] === 'offline_sync' ? sprintf('demo-offline-%03d-7b84-4f1c-9a2f', $number) : null,
                 'classification_confidence' => $scenario['source'] === 'admin' ? null : 0.70 + (($number % 10) * 0.03),
-                'due_at' => $dueAt,
+                'due_at' => $dueAt->addSeconds($pauseSeconds),
+                'sla_paused_at' => $isWaiting && ! in_array($number, self::BREACHED_NUMBERS, true) ? $lastEvent['at'] : null,
+                'sla_total_paused_seconds' => $pauseSeconds,
                 'first_response_at' => $firstResponseAt,
                 'resolved_at' => $resolvedEvent['at'] ?? null,
                 'closed_at' => $closedEvent['at'] ?? null,
@@ -143,10 +149,56 @@ class DemoComplaintsSeeder extends Seeder
                 ])->saveQuietly();
             }
 
+            $this->seedInformationRequests($complaint, $timeline);
+
             if ($currentEmployee) {
                 $this->seedAssignments($complaint, $scenario, $admin, $departmentEmployees, $currentEmployee, $timeline);
             }
         });
+    }
+
+    /**
+     * @param  array<int, array{from_status: string|null, to_status: string, actor: User, note: string, duration_minutes: int|null, at: CarbonImmutable}>  $timeline
+     */
+    private function seedInformationRequests(Complaint $complaint, array $timeline): void
+    {
+        foreach ($timeline as $index => $event) {
+            if ($event['to_status'] !== 'waiting_citizen') {
+                continue;
+            }
+
+            $nextEvent = $timeline[$index + 1] ?? null;
+            $completed = $nextEvent && in_array($nextEvent['to_status'], ['in_progress', 'resolved'], true);
+            $request = ComplaintInformationRequest::query()->create([
+                'complaint_id' => $complaint->id,
+                'requested_by' => $event['actor']->id,
+                'message' => $event['note'],
+                'status' => $completed ? 'completed' : 'pending',
+                'requested_at' => $event['at'],
+                'responded_at' => $completed ? $nextEvent['at']->subMinute() : null,
+                'completed_at' => $completed ? $nextEvent['at'] : null,
+            ]);
+            $request->forceFill([
+                'created_at' => $event['at'],
+                'updated_at' => $completed ? $nextEvent['at'] : $event['at'],
+            ])->saveQuietly();
+        }
+    }
+
+    /**
+     * @param  array<int, array{from_status: string|null, to_status: string, actor: User, note: string, duration_minutes: int|null, at: CarbonImmutable}>  $timeline
+     */
+    private function pausedSeconds(array $timeline): int
+    {
+        $seconds = 0;
+
+        foreach ($timeline as $index => $event) {
+            if ($event['to_status'] === 'waiting_citizen' && isset($timeline[$index + 1])) {
+                $seconds += $event['at']->diffInSeconds($timeline[$index + 1]['at']);
+            }
+        }
+
+        return $seconds;
     }
 
     /**

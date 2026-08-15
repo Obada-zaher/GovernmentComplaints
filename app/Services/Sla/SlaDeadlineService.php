@@ -10,10 +10,12 @@ class SlaDeadlineService
 {
     public function calculateForComplaint(Complaint $complaint): ?Carbon
     {
-        return $this->calculate(
+        return $this->calculateFrom(
             $complaint->department_id,
             $complaint->category_id,
             $complaint->priority_id,
+            $complaint->created_at ?? now(),
+            (int) $complaint->sla_total_paused_seconds,
         );
     }
 
@@ -26,6 +28,17 @@ class SlaDeadlineService
         $rule = $this->findRule($departmentId, $categoryId, $priorityId);
 
         return $rule ? now()->addHours($rule->resolution_time_hours) : null;
+    }
+
+    public function calculateFrom(?int $departmentId, ?int $categoryId, ?int $priorityId, Carbon $startAt, int $pausedSeconds = 0): ?Carbon
+    {
+        if (! $priorityId) {
+            return null;
+        }
+
+        $rule = $this->findRule($departmentId, $categoryId, $priorityId);
+
+        return $rule ? $startAt->copy()->addHours($rule->resolution_time_hours)->addSeconds($pausedSeconds) : null;
     }
 
     public function findRule(?int $departmentId, ?int $categoryId, int $priorityId): ?SlaRule

@@ -13,6 +13,7 @@ use App\Services\Sla\SlaDeadlineService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class ComplaintService
 {
@@ -111,37 +112,45 @@ class ComplaintService
      */
     public function addAttachments(Complaint $complaint, User $citizen, array $files): Complaint
     {
-        [$complaint, $firstInformationResponse] = DB::transaction(function () use ($complaint, $citizen, $files): array {
-            $complaint = Complaint::query()->lockForUpdate()->findOrFail($complaint->id);
+        $storedFiles = [];
 
-            if ((int) $complaint->citizen_id !== (int) $citizen->id) {
-                throw ValidationException::withMessages([
-                    'complaint' => ['You cannot add attachments to this complaint.'],
+        try {
+            [$complaint, $firstInformationResponse] = DB::transaction(function () use ($complaint, $citizen, $files, &$storedFiles): array {
+                $complaint = Complaint::query()->lockForUpdate()->findOrFail($complaint->id);
+
+                if ((int) $complaint->citizen_id !== (int) $citizen->id) {
+                    throw ValidationException::withMessages([
+                        'complaint' => ['You cannot add attachments to this complaint.'],
+                    ]);
+                }
+
+                $storedFiles = $this->attachmentService->storeMany($complaint, $citizen, $files);
+
+                $firstInformationResponse = $complaint->status === 'waiting_citizen'
+                    ? $this->informationRequestService->markCitizenResponse($complaint)
+                    : false;
+
+                $complaint->statusHistories()->create([
+                    'changed_by' => $citizen->id,
+                    'from_status' => $complaint->status,
+                    'to_status' => $complaint->status,
+                    'note' => 'Citizen added attachments',
                 ]);
-            }
 
-            $this->attachmentService->storeMany($complaint, $citizen, $files);
+                return [$complaint->fresh([
+                    'department',
+                    'category',
+                    'priority',
+                    'assignedEmployee',
+                    'attachments',
+                    'statusHistories.changedBy',
+                ]), $firstInformationResponse];
+            });
+        } catch (Throwable $exception) {
+            $this->attachmentService->deleteStoredFiles($storedFiles);
 
-            $firstInformationResponse = $complaint->status === 'waiting_citizen'
-                ? $this->informationRequestService->markCitizenResponse($complaint)
-                : false;
-
-            $complaint->statusHistories()->create([
-                'changed_by' => $citizen->id,
-                'from_status' => $complaint->status,
-                'to_status' => $complaint->status,
-                'note' => 'Citizen added attachments',
-            ]);
-
-            return [$complaint->fresh([
-                'department',
-                'category',
-                'priority',
-                'assignedEmployee',
-                'attachments',
-                'statusHistories.changedBy',
-            ]), $firstInformationResponse];
-        });
+            throw $exception;
+        }
 
         if ($firstInformationResponse) {
             $this->notificationService->notifyUser(

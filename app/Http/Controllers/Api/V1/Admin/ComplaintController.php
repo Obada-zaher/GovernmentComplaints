@@ -168,10 +168,18 @@ class ComplaintController extends Controller
                 ]);
             }
 
+            $this->ensureSlaIsNotPaused($complaint);
+
             $complaint->forceFill([
                 'department_id' => $data['department_id'],
                 'category_id' => $category?->id,
-                'due_at' => $this->slaDeadlineService->calculate((int) $data['department_id'], $category?->id, $complaint->priority_id),
+                'due_at' => $this->slaDeadlineService->calculateFrom(
+                    (int) $data['department_id'],
+                    $category?->id,
+                    $complaint->priority_id,
+                    $complaint->created_at,
+                    (int) $complaint->sla_total_paused_seconds,
+                ),
             ])->save();
 
             $this->statusService->addTimelineNote($complaint, $request->user(), $data['note'] ?? 'Complaint department/category updated.');
@@ -186,12 +194,25 @@ class ComplaintController extends Controller
     {
         $data = $request->validated();
 
-        $complaint->forceFill([
-            'priority_id' => $data['priority_id'],
-            'due_at' => $this->slaDeadlineService->calculate($complaint->department_id, $complaint->category_id, (int) $data['priority_id']),
-        ])->save();
+        $complaint = DB::transaction(function () use ($complaint, $data, $request): Complaint {
+            $complaint = Complaint::query()->lockForUpdate()->findOrFail($complaint->id);
+            $this->ensureSlaIsNotPaused($complaint);
 
-        $this->statusService->addTimelineNote($complaint, $request->user(), $data['note'] ?? 'Complaint priority updated.');
+            $complaint->forceFill([
+                'priority_id' => $data['priority_id'],
+                'due_at' => $this->slaDeadlineService->calculateFrom(
+                    $complaint->department_id,
+                    $complaint->category_id,
+                    (int) $data['priority_id'],
+                    $complaint->created_at,
+                    (int) $complaint->sla_total_paused_seconds,
+                ),
+            ])->save();
+
+            $this->statusService->addTimelineNote($complaint, $request->user(), $data['note'] ?? 'Complaint priority updated.');
+
+            return $complaint->fresh();
+        });
 
         return $this->successResponse('Complaint priority updated successfully.', new ComplaintResource($this->loadComplaint($complaint)));
     }
@@ -254,6 +275,15 @@ class ComplaintController extends Controller
         $employee = $complaint->assignedEmployee;
 
         return $employee && $employee->department_id && (int) $employee->department_id !== $newDepartmentId;
+    }
+
+    private function ensureSlaIsNotPaused(Complaint $complaint): void
+    {
+        if ($complaint->sla_paused_at) {
+            throw ValidationException::withMessages([
+                'status' => ['SLA-affecting complaint changes are not allowed while waiting for citizen information.'],
+            ]);
+        }
     }
 
     private function loadComplaint(Complaint $complaint): Complaint

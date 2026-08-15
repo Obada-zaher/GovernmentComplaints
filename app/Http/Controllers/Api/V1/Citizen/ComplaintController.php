@@ -81,7 +81,7 @@ class ComplaintController extends Controller
             return $this->errorResponse('Forbidden.', [], 403);
         }
 
-        if (in_array($complaint->status, ['closed', 'rejected'], true)) {
+        if (in_array($complaint->status, ['resolved', 'closed', 'rejected'], true)) {
             return $this->errorResponse('Cannot add attachments to a closed or rejected complaint.', [], 422);
         }
 

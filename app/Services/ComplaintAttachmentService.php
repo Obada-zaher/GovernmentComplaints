@@ -5,26 +5,42 @@ namespace App\Services;
 use App\Models\Complaint;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Throwable;
 
 class ComplaintAttachmentService
 {
     /**
      * @param  array<int, UploadedFile>  $files
      */
-    public function storeMany(Complaint $complaint, User $uploadedBy, array $files): void
+    public function storeMany(Complaint $complaint, User $uploadedBy, array $files): array
     {
-        foreach ($files as $file) {
-            $this->store($complaint, $uploadedBy, $file);
+        $storedFiles = [];
+
+        try {
+            foreach ($files as $file) {
+                $this->store($complaint, $uploadedBy, $file, $storedFiles);
+            }
+        } catch (Throwable $exception) {
+            $this->deleteStoredFiles($storedFiles);
+
+            throw $exception;
         }
+
+        return $storedFiles;
     }
 
-    private function store(Complaint $complaint, User $uploadedBy, UploadedFile $file): void
+    /**
+     * @param  array<int, array{disk: string, path: string}>  $storedFiles
+     */
+    private function store(Complaint $complaint, User $uploadedBy, UploadedFile $file, array &$storedFiles): void
     {
         $disk = config('gcms.attachments.disk', 'public');
         $extension = $file->getClientOriginalExtension();
         $fileName = Str::uuid()->toString().($extension ? ".{$extension}" : '');
         $path = $file->storeAs("complaints/{$complaint->id}", $fileName, $disk);
+        $storedFiles[] = ['disk' => $disk, 'path' => $path];
 
         $complaint->attachments()->create([
             'uploaded_by' => $uploadedBy->id,
@@ -35,5 +51,15 @@ class ComplaintAttachmentService
             'file_size' => $file->getSize(),
             'disk' => $disk,
         ]);
+    }
+
+    /**
+     * @param  array<int, array{disk: string, path: string}>  $storedFiles
+     */
+    public function deleteStoredFiles(array $storedFiles): void
+    {
+        foreach ($storedFiles as $storedFile) {
+            Storage::disk($storedFile['disk'])->delete($storedFile['path']);
+        }
     }
 }

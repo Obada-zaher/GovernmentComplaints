@@ -30,6 +30,7 @@ class AdminUserService
     public function update(User $user, array $data, User $actor): User
     {
         return DB::transaction(function () use ($user, $data, $actor): User {
+            $hasActiveAssignedWork = $this->hasActiveAssignedWorkForUpdate($user->id);
             $user = User::query()->lockForUpdate()->findOrFail($user->id);
             $newRole = $data['role'] ?? $user->role;
             $newAttributes = $this->attributes($data, $user);
@@ -41,7 +42,7 @@ class AdminUserService
             }
 
             $this->ensureActiveAdminRemains($user, $newRole !== 'admin');
-            $this->ensureEmployeeWorkIsNotOrphaned($user, $newRole, $newAttributes['department_id']);
+            $this->ensureEmployeeWorkIsNotOrphaned($user, $newRole, $newAttributes['department_id'], $hasActiveAssignedWork);
             $user->update($newAttributes);
 
             return $user->fresh('department');
@@ -51,6 +52,7 @@ class AdminUserService
     public function updateStatus(User $user, bool $isActive, User $actor): User
     {
         return DB::transaction(function () use ($user, $isActive, $actor): User {
+            $hasActiveAssignedWork = $this->hasActiveAssignedWorkForUpdate($user->id);
             $user = User::query()->lockForUpdate()->findOrFail($user->id);
 
             if (! $isActive && $user->id === $actor->id) {
@@ -62,7 +64,7 @@ class AdminUserService
             if (! $isActive) {
                 if ($user->is_active) {
                     $this->ensureActiveAdminRemains($user, true);
-                    $this->ensureEmployeeWorkIsNotOrphaned($user, $user->role, $user->department_id, true);
+                    $this->ensureEmployeeWorkIsNotOrphaned($user, $user->role, $user->department_id, $hasActiveAssignedWork, true);
                     $user->forceFill(['is_active' => false])->save();
                 }
 
@@ -119,7 +121,7 @@ class AdminUserService
         }
     }
 
-    private function ensureEmployeeWorkIsNotOrphaned(User $user, string $newRole, ?int $newDepartmentId, bool $deactivating = false): void
+    private function ensureEmployeeWorkIsNotOrphaned(User $user, string $newRole, ?int $newDepartmentId, bool $hasActiveAssignedWork, bool $deactivating = false): void
     {
         if ($user->role !== 'employee') {
             return;
@@ -131,13 +133,7 @@ class AdminUserService
             return;
         }
 
-        $hasActiveWork = Complaint::query()
-            ->where('assigned_employee_id', $user->id)
-            ->whereIn('status', ['assigned', 'in_progress', 'waiting_citizen', 'escalated'])
-            ->lockForUpdate()
-            ->exists();
-
-        if (! $hasActiveWork) {
+        if (! $hasActiveAssignedWork) {
             return;
         }
 
@@ -146,5 +142,14 @@ class AdminUserService
         throw ValidationException::withMessages([
             $field => ['Reassign the employee\'s active complaints before changing this account.'],
         ]);
+    }
+
+    private function hasActiveAssignedWorkForUpdate(int $userId): bool
+    {
+        return Complaint::query()
+            ->where('assigned_employee_id', $userId)
+            ->whereIn('status', ['assigned', 'in_progress', 'waiting_citizen', 'escalated'])
+            ->lockForUpdate()
+            ->exists();
     }
 }

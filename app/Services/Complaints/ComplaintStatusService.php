@@ -4,12 +4,18 @@ namespace App\Services\Complaints;
 
 use App\Models\Complaint;
 use App\Models\User;
+use App\Services\Notifications\NotificationService;
+use App\Services\Sla\SlaPauseService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ComplaintStatusService
 {
-    public function __construct(private readonly ComplaintInformationRequestService $informationRequestService) {}
+    public function __construct(
+        private readonly ComplaintInformationRequestService $informationRequestService,
+        private readonly SlaPauseService $slaPauseService,
+        private readonly NotificationService $notificationService,
+    ) {}
 
     /**
      * @var array<string, array<int, string>>
@@ -28,7 +34,8 @@ class ComplaintStatusService
 
     public function updateStatus(Complaint $complaint, User $changedBy, string $toStatus, ?string $note = null): Complaint
     {
-        return DB::transaction(function () use ($complaint, $changedBy, $toStatus, $note): Complaint {
+        $slaBreachedBeforePause = false;
+        $updatedComplaint = DB::transaction(function () use ($complaint, $changedBy, $toStatus, $note, &$slaBreachedBeforePause): Complaint {
             $complaint = Complaint::query()->lockForUpdate()->findOrFail($complaint->id);
             $fromStatus = $complaint->status;
 
@@ -56,10 +63,12 @@ class ComplaintStatusService
                 }
 
                 $this->informationRequestService->createPending($complaint, $changedBy, $message);
+                $slaBreachedBeforePause = $this->slaPauseService->pause($complaint);
             }
 
             if ($fromStatus === 'waiting_citizen' && in_array($toStatus, ['in_progress', 'resolved'], true)) {
                 $this->informationRequestService->completeAfterCitizenResponse($complaint);
+                $this->slaPauseService->resume($complaint, $toStatus === 'in_progress');
             }
 
             $complaint->forceFill([
@@ -73,16 +82,18 @@ class ComplaintStatusService
 
             return $complaint->fresh();
         });
+
+        if ($slaBreachedBeforePause) {
+            $this->notifySlaBreach($updatedComplaint);
+        }
+
+        return $updatedComplaint;
     }
 
     public function addTimelineNote(Complaint $complaint, User $changedBy, ?string $note = null): void
     {
         DB::transaction(function () use ($complaint, $changedBy, $note): void {
             $complaint = Complaint::query()->lockForUpdate()->findOrFail($complaint->id);
-
-            if (! $complaint->first_response_at) {
-                $complaint->forceFill(['first_response_at' => now()])->save();
-            }
 
             $this->createHistory($complaint, $changedBy, $complaint->status, $complaint->status, $note);
         });
@@ -128,5 +139,27 @@ class ComplaintStatusService
             'note' => $note,
             'duration_minutes' => $durationMinutes,
         ]);
+    }
+
+    private function notifySlaBreach(Complaint $complaint): void
+    {
+        if ($complaint->assignedEmployee) {
+            $this->notificationService->notifyUser(
+                $complaint->assignedEmployee,
+                NotificationService::TYPE_SLA_BREACHED,
+                $complaint,
+                'SLA breached for assigned complaint',
+                "Complaint {$complaint->complaint_number} has breached its SLA deadline.",
+                once: true,
+            );
+        }
+
+        $this->notificationService->notifyAdmins(
+            NotificationService::TYPE_SLA_BREACHED,
+            $complaint,
+            'Complaint SLA breached',
+            "Complaint {$complaint->complaint_number} has breached its SLA deadline.",
+            once: true,
+        );
     }
 }

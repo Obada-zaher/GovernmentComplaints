@@ -35,6 +35,7 @@ class CheckComplaintSlaBreaches extends Command
             ->whereNotNull('due_at')
             ->where('due_at', '<', now())
             ->where('is_sla_breached', false)
+            ->whereNull('sla_paused_at')
             ->whereNotIn('status', $this->terminalStatuses);
 
         $checkedCount = (clone $query)->count();
@@ -43,11 +44,16 @@ class CheckComplaintSlaBreaches extends Command
 
         $query->orderBy('id')->chunkById(100, function ($complaints) use (&$breachedCount, &$notifiedUserIds): void {
             foreach ($complaints as $complaint) {
-                $complaint = DB::transaction(function () use ($complaint): Complaint {
-                    $complaint->refresh();
+                [$complaint, $wasBreached] = DB::transaction(function () use ($complaint): array {
+                    $complaint = Complaint::query()->lockForUpdate()->findOrFail($complaint->id);
 
-                    if ($complaint->is_sla_breached || in_array($complaint->status, $this->terminalStatuses, true)) {
-                        return $complaint;
+                    if (! $complaint->due_at
+                        || $complaint->due_at->gt(now())
+                        || $complaint->is_sla_breached
+                        || $complaint->sla_paused_at
+                        || $complaint->status === 'waiting_citizen'
+                        || in_array($complaint->status, $this->terminalStatuses, true)) {
+                        return [$complaint, false];
                     }
 
                     $fromStatus = $complaint->status;
@@ -62,10 +68,10 @@ class CheckComplaintSlaBreaches extends Command
 
                     $this->createSystemHistory($complaint, $fromStatus, $toStatus);
 
-                    return $complaint->fresh(['assignedEmployee']);
+                    return [$complaint->fresh(['assignedEmployee']), true];
                 });
 
-                if (! $complaint->is_sla_breached) {
+                if (! $wasBreached) {
                     continue;
                 }
 

@@ -141,6 +141,25 @@ class DemoComplaintsSeederTest extends TestCase
             ->pluck('complaint_number')
             ->all());
 
+        $waitingComplaints = Complaint::query()
+            ->where('complaint_number', 'like', 'GCMS-DEMO-%')
+            ->where('status', 'waiting_citizen')
+            ->with('informationRequests')
+            ->get();
+        $this->assertTrue($waitingComplaints->every(fn (Complaint $complaint): bool => $complaint->informationRequests
+            ->whereIn('status', ['pending', 'responded'])
+            ->count() === 1));
+
+        $historicalWaitingComplaints = Complaint::query()
+            ->where('complaint_number', 'like', 'GCMS-DEMO-%')
+            ->whereIn('status', ['resolved', 'closed'])
+            ->with(['informationRequests', 'statusHistories'])
+            ->get()
+            ->filter(fn (Complaint $complaint): bool => $complaint->statusHistories->contains('to_status', 'waiting_citizen'));
+        $this->assertTrue($historicalWaitingComplaints->every(fn (Complaint $complaint): bool => $complaint->informationRequests
+            ->where('status', 'completed')
+            ->isNotEmpty()));
+
         $employees = User::query()->where('role', 'employee')->get();
         $this->assertCount(10, $employees);
 

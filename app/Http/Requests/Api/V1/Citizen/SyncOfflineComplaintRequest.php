@@ -11,6 +11,36 @@ class SyncOfflineComplaintRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $input = $this->all();
+        $complaint = is_array($input['complaint'] ?? null) ? $input['complaint'] : [];
+        $location = is_array($complaint['location'] ?? null) ? $complaint['location'] : [];
+        $normalized = [];
+
+        foreach (['title', 'description', 'department_id', 'category_id', 'priority_id'] as $field) {
+            if (! array_key_exists($field, $input) && array_key_exists($field, $complaint)) {
+                $normalized[$field] = $complaint[$field];
+            }
+        }
+
+        foreach (['latitude' => 'lat', 'longitude' => 'lng', 'address' => 'address'] as $field => $locationField) {
+            if (! array_key_exists($field, $input) && array_key_exists($locationField, $location)) {
+                $normalized[$field] = $location[$locationField];
+            }
+        }
+
+        if (! array_key_exists('client_uuid', $input)) {
+            if (array_key_exists('client_uuid', $complaint)) {
+                $normalized['client_uuid'] = $complaint['client_uuid'];
+            } elseif (array_key_exists('client_ref', $complaint)) {
+                $normalized['client_uuid'] = $complaint['client_ref'];
+            }
+        }
+
+        $this->merge($normalized);
+    }
+
     /**
      * @return array<string, mixed>
      */

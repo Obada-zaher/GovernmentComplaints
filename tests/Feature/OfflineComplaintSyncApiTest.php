@@ -87,6 +87,95 @@ class OfflineComplaintSyncApiTest extends TestCase
             ->assertJsonPath('data.complaint.client_uuid', $clientUuid);
     }
 
+    public function test_mobile_nested_offline_payload_is_normalized_with_client_ref(): void
+    {
+        $citizen = $this->actingAsCitizen();
+        [$department, $category, $priority] = $this->lookups();
+
+        $response = $this->postJson('/api/v1/citizen/offline/complaints/sync', [
+            'created_offline_at' => '2026-07-05T10:00:00Z',
+            'complaint' => [
+                'client_ref' => 'nested-offline-reference',
+                'title' => 'Nested offline complaint',
+                'description' => 'This offline payload keeps complaint fields nested.',
+                'department_id' => $department->id,
+                'category_id' => $category->id,
+                'priority_id' => $priority->id,
+                'location' => [
+                    'lat' => 33.5138,
+                    'lng' => 36.2765,
+                    'address' => 'Damascus',
+                ],
+            ],
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.complaint.title', 'Nested offline complaint')
+            ->assertJsonPath('data.complaint.client_uuid', 'nested-offline-reference')
+            ->assertJsonPath('data.complaint.client_ref', 'nested-offline-reference')
+            ->assertJsonPath('data.complaint.location.address', 'Damascus');
+
+        $this->assertDatabaseHas('offline_submissions', [
+            'citizen_id' => $citizen->id,
+            'client_uuid' => 'nested-offline-reference',
+        ]);
+    }
+
+    public function test_top_level_offline_fields_take_precedence_over_nested_mobile_fields(): void
+    {
+        $this->actingAsCitizen();
+
+        $response = $this->postJson('/api/v1/citizen/offline/complaints/sync', [
+            'client_uuid' => 'canonical-offline-uuid',
+            'title' => 'Flat offline complaint',
+            'description' => 'Top-level fields remain authoritative.',
+            'latitude' => 30.1,
+            'longitude' => 31.2,
+            'address' => 'Flat address',
+            'complaint' => [
+                'client_ref' => 'nested-offline-reference',
+                'title' => 'Nested offline complaint',
+                'description' => 'Nested description',
+                'location' => [
+                    'lat' => 33.5138,
+                    'lng' => 36.2765,
+                    'address' => 'Nested address',
+                ],
+            ],
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.complaint.title', 'Flat offline complaint')
+            ->assertJsonPath('data.complaint.client_uuid', 'canonical-offline-uuid')
+            ->assertJsonPath('data.complaint.latitude', '30.1000000')
+            ->assertJsonPath('data.complaint.longitude', '31.2000000')
+            ->assertJsonPath('data.complaint.address', 'Flat address');
+    }
+
+    public function test_nested_mobile_offline_payload_remains_idempotent(): void
+    {
+        $this->actingAsCitizen();
+        $payload = [
+            'complaint' => [
+                'client_ref' => 'nested-idempotency-reference',
+                'title' => 'Nested idempotent complaint',
+                'description' => 'The retry must use the existing idempotency key.',
+                'location' => [
+                    'lat' => 33.5138,
+                    'lng' => 36.2765,
+                    'address' => 'Damascus',
+                ],
+            ],
+        ];
+
+        $this->postJson('/api/v1/citizen/offline/complaints/sync', $payload)->assertCreated();
+        $this->postJson('/api/v1/citizen/offline/complaints/sync', $payload)
+            ->assertOk()
+            ->assertJsonPath('meta.idempotent', true);
+
+        $this->assertSame(1, Complaint::query()->where('client_uuid', 'nested-idempotency-reference')->count());
+    }
+
     public function test_synced_complaint_gets_complaint_number(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-07-05 10:00:00'));

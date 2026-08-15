@@ -73,6 +73,108 @@ class CitizenComplaintApiTest extends TestCase
             ->assertJsonPath('data.source', 'mobile');
     }
 
+    public function test_citizen_can_create_complaint_with_nested_mobile_location_and_client_ref(): void
+    {
+        $this->actingAsCitizen();
+
+        $response = $this->post('/api/v1/citizen/complaints', [
+            'title' => 'Nested mobile location',
+            'description' => 'The mobile payload uses multipart-style nested location fields.',
+            'client_ref' => 'mobile-online-reference',
+            'location' => [
+                'lat' => 33.5138,
+                'lng' => 36.2765,
+                'address' => 'Damascus',
+            ],
+        ], ['Accept' => 'application/json']);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.latitude', '33.5138000')
+            ->assertJsonPath('data.longitude', '36.2765000')
+            ->assertJsonPath('data.address', 'Damascus')
+            ->assertJsonPath('data.location.lat', '33.5138000')
+            ->assertJsonPath('data.location.lng', '36.2765000')
+            ->assertJsonPath('data.client_uuid', 'mobile-online-reference')
+            ->assertJsonPath('data.client_ref', 'mobile-online-reference');
+    }
+
+    public function test_flat_complaint_fields_take_precedence_over_nested_mobile_fields(): void
+    {
+        $this->actingAsCitizen();
+
+        $response = $this->postJson('/api/v1/citizen/complaints', [
+            'title' => 'Flat values win',
+            'description' => 'Existing client fields remain authoritative.',
+            'client_uuid' => 'canonical-client-uuid',
+            'client_ref' => 'nested-client-reference',
+            'latitude' => 30.1,
+            'longitude' => 31.2,
+            'address' => 'Flat address',
+            'location' => [
+                'lat' => 33.5138,
+                'lng' => 36.2765,
+                'address' => 'Nested address',
+            ],
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.latitude', '30.1000000')
+            ->assertJsonPath('data.longitude', '31.2000000')
+            ->assertJsonPath('data.address', 'Flat address')
+            ->assertJsonPath('data.client_uuid', 'canonical-client-uuid')
+            ->assertJsonPath('data.client_ref', 'canonical-client-uuid');
+    }
+
+    public function test_nested_mobile_location_uses_existing_coordinate_validation(): void
+    {
+        $this->actingAsCitizen();
+
+        $this->postJson('/api/v1/citizen/complaints', [
+            'title' => 'Invalid coordinates',
+            'description' => 'Nested coordinates must use the same validation rules.',
+            'location' => [
+                'lat' => 91,
+                'lng' => -181,
+            ],
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['latitude', 'longitude']);
+    }
+
+    public function test_complaint_response_contains_additive_mobile_aliases(): void
+    {
+        $citizen = $this->actingAsCitizen();
+        [$department, $category, $priority] = $this->departmentCategoryPriority();
+        $employee = User::factory()->employee()->create();
+        $dueAt = Carbon::parse('2026-07-06T10:00:00Z');
+        $complaint = Complaint::factory()->create([
+            'citizen_id' => $citizen->id,
+            'department_id' => $department->id,
+            'category_id' => $category->id,
+            'priority_id' => $priority->id,
+            'assigned_employee_id' => $employee->id,
+            'client_uuid' => 'response-client-uuid',
+            'latitude' => 33.5138,
+            'longitude' => 36.2765,
+            'address' => 'Damascus',
+            'due_at' => $dueAt,
+        ]);
+
+        $this->getJson('/api/v1/citizen/complaints/'.$complaint->id)
+            ->assertOk()
+            ->assertJsonPath('data.client_uuid', 'response-client-uuid')
+            ->assertJsonPath('data.client_ref', 'response-client-uuid')
+            ->assertJsonPath('data.department_id', $department->id)
+            ->assertJsonPath('data.category_id', $category->id)
+            ->assertJsonPath('data.priority_id', $priority->id)
+            ->assertJsonPath('data.location.lat', '33.5138000')
+            ->assertJsonPath('data.location.lng', '36.2765000')
+            ->assertJsonPath('data.location.address', 'Damascus')
+            ->assertJsonPath('data.due_at', $dueAt->toISOString())
+            ->assertJsonPath('data.sla_due_at', $dueAt->toISOString())
+            ->assertJsonPath('data.assigned_employee_id', $employee->id)
+            ->assertJsonPath('data.assigned_employee.id', $employee->id);
+    }
+
     public function test_category_department_mismatch_returns_validation_error(): void
     {
         $this->actingAsCitizen();

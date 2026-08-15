@@ -21,6 +21,7 @@ services:
       DB_USERNAME: gcms
       DB_PASSWORD: gcms
       QUEUE_CONNECTION: database
+      GCMS_PROCESS_ROLE: web
       CACHE_STORE: database
       SESSION_DRIVER: database
       MAIL_MAILER: log
@@ -48,6 +49,7 @@ services:
       DB_USERNAME: gcms
       DB_PASSWORD: gcms
       QUEUE_CONNECTION: database
+      GCMS_PROCESS_ROLE: worker
       MAIL_MAILER: log
     depends_on:
       - app
@@ -70,6 +72,7 @@ services:
       DB_USERNAME: gcms
       DB_PASSWORD: gcms
       QUEUE_CONNECTION: database
+      GCMS_PROCESS_ROLE: cron
       MAIL_MAILER: log
     depends_on:
       - app

@@ -145,6 +145,22 @@ https://governmentcomplaints.onrender.com/api/v1/lookups/categories
 https://governmentcomplaints.onrender.com/api/v1/lookups/priorities
 ```
 
+### Manual Render Runtime Roles
+
+Do not create or modify Render services from this repository. Configure the following processes manually in the Render Dashboard, using the same Dockerfile and shared application/database environment.
+
+| Process | Required role | Docker command | Schedule |
+| --- | --- | --- | --- |
+| Existing web service | `GCMS_PROCESS_ROLE=web` (or omit it; web is the default) | Keep the current web command | Always on |
+| Background worker | `GCMS_PROCESS_ROLE=worker` and `QUEUE_CONNECTION=database` | `sh scripts/render-queue-worker.sh` | Always on, separate from HTTP |
+| SLA cron | `GCMS_PROCESS_ROLE=cron` | `sh scripts/render-scheduler-run.sh` | `* * * * *` |
+
+The web role preserves the existing startup behavior: cache clearing, storage linking, migrations, base seeding, and optional `SEED_DEMO_DATA=true` demo seeding. Worker and cron roles only perform minimal filesystem preparation; they never run migrations, seeders, demo seeders, or deployment cache-clearing commands.
+
+The cron command runs one `schedule:run` tick and exits. Laravel invokes `complaints:check-sla` every minute with overlap protection. Do not run `queue:work` inside the HTTP web process.
+
+Worker and cron services must share `APP_KEY`, `APP_ENV`, database variables (`DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`), and `QUEUE_CONNECTION` with the web service. The worker also needs any channel configuration it executes: `MAIL_*`, `PUSH_NOTIFICATIONS_ENABLED`, `EXPO_PUSH_URL`, optional `EXPO_PUSH_ACCESS_TOKEN`, `FCM_*`, and `SMS_*`. Add only the values relevant to enabled channels, and never put real secrets in this repository.
+
 ## Environment Configuration
 
 Copy `.env.example` to `.env` and configure:

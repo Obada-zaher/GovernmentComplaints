@@ -24,7 +24,9 @@ return Application::configure(basePath: dirname(__DIR__))
         CheckComplaintSlaBreaches::class,
     ])
     ->withSchedule(function (Schedule $schedule): void {
-        $schedule->command('complaints:check-sla')->everyFifteenMinutes();
+        $schedule->command('complaints:check-sla')
+            ->everyMinute()
+            ->withoutOverlapping(10);
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->api(prepend: [

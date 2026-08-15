@@ -65,6 +65,7 @@ paths:
       tags: [Auth]
       security: []
       summary: Login with email/phone and password, then send OTP
+      description: Valid credentials start OTP verification. Valid credentials for an inactive account return `403` with message `User account is inactive.`.
       requestBody:
         required: true
         content:
@@ -78,11 +79,13 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/Success" }
         "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
   /auth/verify-otp:
     post:
       tags: [Auth]
       security: []
       summary: Verify OTP and issue Sanctum token
+      description: Verifies an OTP and issues a Sanctum token only for an active account. An inactive account returns `403` and cannot receive a token.
       requestBody:
         required: true
         content:
@@ -97,14 +100,17 @@ paths:
                 device_name: { type: string, example: Postman }
       responses:
         "200": { $ref: "#/components/responses/Success" }
+        "403": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/ValidationError" }
   /auth/resend-otp:
     post:
       tags: [Auth]
       security: []
       summary: Resend OTP
+      description: Sends a new OTP only for an active account. Inactive accounts cannot request or resend an OTP and receive `403`.
       responses:
         "200": { $ref: "#/components/responses/Success" }
+        "403": { $ref: "#/components/responses/Error" }
   /auth/forgot-password:
     post:
       tags: [Auth]

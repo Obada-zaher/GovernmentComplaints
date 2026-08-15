@@ -38,6 +38,8 @@ class ComplaintStatusService
         $updatedComplaint = DB::transaction(function () use ($complaint, $changedBy, $toStatus, $note, &$slaBreachedBeforePause): Complaint {
             $complaint = Complaint::query()->lockForUpdate()->findOrFail($complaint->id);
             $fromStatus = $complaint->status;
+            $statusEnteredAt = $complaint->status_entered_at ?? $complaint->created_at ?? now();
+            $transitionedAt = now();
 
             if ($fromStatus === $toStatus) {
                 throw ValidationException::withMessages([
@@ -73,12 +75,13 @@ class ComplaintStatusService
 
             $complaint->forceFill([
                 'status' => $toStatus,
+                'status_entered_at' => $transitionedAt,
                 'first_response_at' => $complaint->first_response_at ?? now(),
                 'resolved_at' => $toStatus === 'resolved' && ! $complaint->resolved_at ? now() : $complaint->resolved_at,
                 'closed_at' => $toStatus === 'closed' && ! $complaint->closed_at ? now() : $complaint->closed_at,
             ])->save();
 
-            $this->createHistory($complaint, $changedBy, $fromStatus, $toStatus, $note);
+            $this->createHistory($complaint, $changedBy, $fromStatus, $toStatus, $note, $statusEnteredAt, $transitionedAt);
 
             return $complaint->fresh();
         });
@@ -126,11 +129,14 @@ class ComplaintStatusService
         }
     }
 
-    private function createHistory(Complaint $complaint, User $changedBy, string $fromStatus, string $toStatus, ?string $note): void
+    private function createHistory(Complaint $complaint, User $changedBy, string $fromStatus, string $toStatus, ?string $note, mixed $statusEnteredAt = null, mixed $transitionedAt = null): void
     {
-        $lastHistory = $complaint->statusHistories()->latest()->first();
-        $startedAt = $lastHistory?->created_at ?? $complaint->created_at ?? now();
-        $durationMinutes = max(0, (int) $startedAt->diffInMinutes(now()));
+        $durationMinutes = 0;
+
+        if ($fromStatus !== $toStatus) {
+            $startedAt = $statusEnteredAt ?? $complaint->status_entered_at ?? $complaint->created_at ?? now();
+            $durationMinutes = max(0, (int) $startedAt->diffInMinutes($transitionedAt ?? now()));
+        }
 
         $complaint->statusHistories()->create([
             'changed_by' => $changedBy->id,

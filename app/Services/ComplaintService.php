@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Complaint;
 use App\Models\ComplaintCategory;
+use App\Models\Department;
 use App\Models\Priority;
 use App\Models\User;
 use App\Services\Classification\ComplaintClassificationService;
@@ -31,80 +32,88 @@ class ComplaintService
      */
     public function create(User $citizen, array $data): Complaint
     {
-        return DB::transaction(function () use ($citizen, $data): Complaint {
-            $classification = $this->classificationService->classify($data['title'], $data['description']);
-            $classificationAutoAssigned = false;
-            [$data, $classificationAutoAssigned] = $this->applyClassification($data, $classification);
-            $category = $this->categoryFromData($data);
-            $departmentId = $this->resolveDepartmentId($data, $category);
-            $priorityId = $this->resolvePriorityId($data);
+        $storedFiles = [];
 
-            $complaint = Complaint::query()->create([
-                'complaint_number' => $this->complaintNumberService->generate(),
-                'citizen_id' => $citizen->id,
-                'department_id' => $departmentId,
-                'category_id' => $category?->id,
-                'priority_id' => $priorityId,
-                'title' => $data['title'],
-                'description' => $data['description'],
-                'status' => 'submitted',
-                'assigned_employee_id' => null,
-                'latitude' => $data['latitude'] ?? null,
-                'longitude' => $data['longitude'] ?? null,
-                'address' => $data['address'] ?? null,
-                'source' => $data['source'] ?? 'web',
-                'client_uuid' => $data['client_uuid'] ?? null,
-                'classification_confidence' => $this->normalizeClassificationConfidence(
-                    $classification['confidence'] ?? 0,
-                ),
-                'due_at' => $this->slaDeadlineService->calculate($departmentId, $category?->id, $priorityId),
-            ]);
+        try {
+            return DB::transaction(function () use ($citizen, $data, &$storedFiles): Complaint {
+                $classification = $this->classificationService->classify($data['title'], $data['description']);
+                $classificationAutoAssigned = false;
+                [$data, $classificationAutoAssigned] = $this->applyClassification($data, $classification);
+                $category = $this->categoryFromData($data);
+                $departmentId = $this->resolveDepartmentId($data, $category);
+                $priorityId = $this->resolvePriorityId($data);
 
-            $this->classificationService->log(
-                $data['title'],
-                $data['description'],
-                $classification,
-                $complaint,
-                $classificationAutoAssigned,
-            );
+                $complaint = Complaint::query()->create([
+                    'complaint_number' => $this->complaintNumberService->generate(),
+                    'citizen_id' => $citizen->id,
+                    'department_id' => $departmentId,
+                    'category_id' => $category?->id,
+                    'priority_id' => $priorityId,
+                    'title' => $data['title'],
+                    'description' => $data['description'],
+                    'status' => 'submitted',
+                    'status_entered_at' => now(),
+                    'assigned_employee_id' => null,
+                    'latitude' => $data['latitude'] ?? null,
+                    'longitude' => $data['longitude'] ?? null,
+                    'address' => $data['address'] ?? null,
+                    'source' => $data['source'] ?? 'web',
+                    'client_uuid' => $data['client_uuid'] ?? null,
+                    'classification_confidence' => $this->normalizeClassificationConfidence(
+                        $classification['confidence'] ?? 0,
+                    ),
+                    'classification_auto_assigned' => $classificationAutoAssigned,
+                    'due_at' => $this->slaDeadlineService->calculate($departmentId, $category?->id, $priorityId),
+                ]);
 
-            $complaint->statusHistories()->create([
-                'changed_by' => $citizen->id,
-                'from_status' => null,
-                'to_status' => 'submitted',
-                'note' => 'Complaint submitted by citizen',
-            ]);
+                $this->classificationService->log(
+                    $data['title'],
+                    $data['description'],
+                    $classification,
+                    $complaint,
+                    $classificationAutoAssigned,
+                );
 
-            $this->attachmentService->storeMany($complaint, $citizen, $data['attachments'] ?? []);
+                $complaint->statusHistories()->create([
+                    'changed_by' => $citizen->id,
+                    'from_status' => null,
+                    'to_status' => 'submitted',
+                    'note' => 'Complaint submitted by citizen',
+                ]);
 
-            $this->notificationService->notifyAdmins(
-                NotificationService::TYPE_COMPLAINT_CREATED,
-                $complaint,
-                'New complaint submitted',
-                "Complaint {$complaint->complaint_number} was submitted by a citizen.",
-            );
+                $storedFiles = $this->attachmentService->storeMany($complaint, $citizen, $data['attachments'] ?? []);
 
-            $this->notificationService->notifyDepartmentEmployees(
-                $departmentId,
-                NotificationService::TYPE_COMPLAINT_CREATED,
-                $complaint,
-                'New complaint in your department',
-                "Complaint {$complaint->complaint_number} is available for department review.",
-            );
+                $this->notificationService->notifyAdmins(
+                    NotificationService::TYPE_COMPLAINT_CREATED,
+                    $complaint,
+                    'New complaint submitted',
+                    "Complaint {$complaint->complaint_number} was submitted by a citizen.",
+                );
 
-            $complaint = $complaint->fresh([
-                'department',
-                'category',
-                'priority',
-                'assignedEmployee',
-                'attachments',
-                'statusHistories.changedBy',
-            ]);
+                $this->notificationService->notifyDepartmentEmployees(
+                    $departmentId,
+                    NotificationService::TYPE_COMPLAINT_CREATED,
+                    $complaint,
+                    'New complaint in your department',
+                    "Complaint {$complaint->complaint_number} is available for department review.",
+                );
 
-            $complaint->setAttribute('classification_auto_assigned', $classificationAutoAssigned);
+                $complaint = $complaint->fresh([
+                    'department',
+                    'category',
+                    'priority',
+                    'assignedEmployee',
+                    'attachments',
+                    'statusHistories.changedBy',
+                ]);
 
-            return $complaint;
-        });
+                return $complaint;
+            });
+        } catch (Throwable $exception) {
+            $this->attachmentService->deleteStoredFiles($storedFiles);
+
+            throw $exception;
+        }
     }
 
     /**
@@ -174,7 +183,19 @@ class ComplaintService
             return null;
         }
 
-        return ComplaintCategory::query()->find((int) $data['category_id']);
+        $category = ComplaintCategory::query()
+            ->whereKey((int) $data['category_id'])
+            ->where('is_active', true)
+            ->whereHas('department', fn ($query) => $query->where('is_active', true))
+            ->first();
+
+        if (! $category) {
+            throw ValidationException::withMessages([
+                'category_id' => ['The selected category is not available.'],
+            ]);
+        }
+
+        return $category;
     }
 
     /**
@@ -183,6 +204,12 @@ class ComplaintService
     private function resolveDepartmentId(array $data, ?ComplaintCategory $category): ?int
     {
         $departmentId = isset($data['department_id']) ? (int) $data['department_id'] : null;
+
+        if ($departmentId && ! $this->usableDepartment($departmentId)) {
+            throw ValidationException::withMessages([
+                'department_id' => ['The selected department is not available.'],
+            ]);
+        }
 
         if ($category && ! $departmentId) {
             return $category->department_id;
@@ -227,21 +254,40 @@ class ComplaintService
         $predictedDepartmentId = $classification['department']['id'] ?? null;
         $predictedCategoryId = $classification['category']['id'] ?? null;
 
-        if (! $explicitDepartment && ! $explicitCategory && $predictedDepartmentId) {
-            $data['department_id'] = $predictedDepartmentId;
+        $predictedCategory = $predictedCategoryId
+            ? ComplaintCategory::query()
+                ->whereKey($predictedCategoryId)
+                ->where('is_active', true)
+                ->whereHas('department', fn ($query) => $query->where('is_active', true))
+                ->first()
+            : null;
+
+        if (! $explicitDepartment && ! $explicitCategory && $predictedCategory) {
+            $data['department_id'] = $predictedCategory->department_id;
+            $data['category_id'] = $predictedCategory->id;
+            $autoAssigned = true;
+        } elseif (! $explicitDepartment && ! $explicitCategory && ! $predictedCategoryId) {
+            $predictedDepartment = $predictedDepartmentId ? $this->usableDepartment((int) $predictedDepartmentId) : null;
+
+            if ($predictedDepartment) {
+                $data['department_id'] = $predictedDepartment->id;
+                $autoAssigned = true;
+            }
+        } elseif (! $explicitCategory && $predictedCategory
+            && (int) $predictedCategory->department_id === (int) $data['department_id']) {
+            $data['category_id'] = $predictedCategory->id;
             $autoAssigned = true;
         }
 
-        if (! $explicitCategory && $predictedCategoryId) {
-            $predictedCategory = ComplaintCategory::query()->find($predictedCategoryId);
-
-            if ($predictedCategory && (empty($data['department_id']) || (int) $predictedCategory->department_id === (int) $data['department_id'])) {
-                $data['category_id'] = $predictedCategoryId;
-                $autoAssigned = true;
-            }
-        }
-
         return [$data, $autoAssigned];
+    }
+
+    private function usableDepartment(int $departmentId): ?Department
+    {
+        return Department::query()
+            ->whereKey($departmentId)
+            ->where('is_active', true)
+            ->first();
     }
 
     private function normalizeClassificationConfidence(mixed $confidence): float

@@ -86,10 +86,30 @@ class OfflineComplaintSyncService
                 ];
             });
         } catch (Throwable $exception) {
-            $offlineSubmission->fresh()->forceFill([
-                'status' => 'failed',
-                'error_message' => $exception->getMessage(),
-            ])->save();
+            $recoveredResult = DB::transaction(function () use ($citizen, $data, $exception): ?array {
+                $offlineSubmission = OfflineSubmission::query()
+                    ->where('citizen_id', $citizen->id)
+                    ->where('client_uuid', $data['client_uuid'])
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $offlineSubmission->load('syncedComplaint');
+
+                if ($offlineSubmission->status === 'synced' && $offlineSubmission->syncedComplaint) {
+                    return $this->result($offlineSubmission, true);
+                }
+
+                $offlineSubmission->forceFill([
+                    'status' => 'failed',
+                    'error_message' => $exception->getMessage(),
+                ])->save();
+
+                return null;
+            });
+
+            if ($recoveredResult) {
+                return $recoveredResult;
+            }
 
             throw $exception;
         }

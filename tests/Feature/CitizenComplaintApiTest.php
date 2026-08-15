@@ -9,11 +9,19 @@ use App\Models\Department;
 use App\Models\Priority;
 use App\Models\SlaRule;
 use App\Models\User;
+use App\Services\Classification\ComplaintClassificationService;
+use App\Services\ComplaintAttachmentService;
+use App\Services\ComplaintNumberService;
+use App\Services\Complaints\ComplaintInformationRequestService;
+use App\Services\ComplaintService;
+use App\Services\Notifications\NotificationService;
+use App\Services\Sla\SlaDeadlineService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
+use RuntimeException;
 use Tests\TestCase;
 
 class CitizenComplaintApiTest extends TestCase
@@ -192,6 +200,33 @@ class CitizenComplaintApiTest extends TestCase
             ->assertJsonValidationErrors(['category_id']);
     }
 
+    public function test_inactive_or_deleted_reference_data_cannot_be_used_for_complaint_creation(): void
+    {
+        $this->actingAsCitizen();
+        $department = Department::factory()->create(['is_active' => false]);
+        $category = ComplaintCategory::factory()->create(['department_id' => $department->id]);
+
+        $this->postJson('/api/v1/citizen/complaints', [
+            'title' => 'Inactive reference',
+            'description' => 'This must not persist invalid reference data.',
+            'department_id' => $department->id,
+            'category_id' => $category->id,
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['department_id']);
+
+        $activeDepartment = Department::factory()->create();
+        $deletedCategory = ComplaintCategory::factory()->create(['department_id' => $activeDepartment->id]);
+        $deletedCategory->delete();
+
+        $this->postJson('/api/v1/citizen/complaints', [
+            'title' => 'Deleted category',
+            'description' => 'This must not persist deleted categories.',
+            'department_id' => $activeDepartment->id,
+            'category_id' => $deletedCategory->id,
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['category_id']);
+    }
+
     public function test_category_without_department_infers_department(): void
     {
         $this->actingAsCitizen();
@@ -354,6 +389,38 @@ class CitizenComplaintApiTest extends TestCase
         $this->getJson('/api/v1/citizen/complaints/'.$response->json('data.id'))
             ->assertOk()
             ->assertJsonPath('data.attachments.0.url', $attachmentUrl);
+    }
+
+    public function test_failed_create_after_attachment_storage_cleans_only_new_files(): void
+    {
+        Storage::fake('public');
+        $citizen = $this->actingAsCitizen();
+        $notifications = \Mockery::mock(NotificationService::class);
+        $notifications->shouldReceive('notifyAdmins')->once()->andThrow(new RuntimeException('Notification failure'));
+
+        $service = new ComplaintService(
+            app(ComplaintNumberService::class),
+            app(ComplaintAttachmentService::class),
+            app(SlaDeadlineService::class),
+            $notifications,
+            app(ComplaintClassificationService::class),
+            app(ComplaintInformationRequestService::class),
+        );
+
+        try {
+            $service->create($citizen, [
+                'title' => 'Attachment rollback',
+                'description' => 'The attachment must be removed when later work fails.',
+                'attachments' => [UploadedFile::fake()->image('proof.jpg')->size(100)],
+            ]);
+            $this->fail('Complaint creation should fail after attachment storage.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Notification failure', $exception->getMessage());
+        }
+
+        $this->assertSame([], Storage::disk('public')->allFiles('complaints'));
+        $this->assertSame(0, Complaint::query()->count());
+        $this->assertSame(0, ComplaintAttachment::query()->count());
     }
 
     public function test_configured_attachment_disk_is_used_for_new_uploads(): void

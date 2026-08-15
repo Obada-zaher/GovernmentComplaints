@@ -290,7 +290,8 @@ class ReportService
                 $query->where('is_sla_breached', true)
                     ->orWhere(function ($overdueQuery): void {
                         $overdueQuery
-                            ->where('due_at', '<', now())
+                            ->where('due_at', '<=', now())
+                            ->whereNull('sla_paused_at')
                             ->whereNotIn('status', self::SLA_TERMINAL_STATUSES);
                     });
             })
@@ -379,7 +380,10 @@ class ReportService
     private function isSlaBreachedForReport(Complaint $complaint): bool
     {
         return (bool) $complaint->is_sla_breached
-            || ($complaint->due_at && $complaint->due_at->lt(now()) && ! in_array($complaint->status, self::SLA_TERMINAL_STATUSES, true));
+            || ($complaint->due_at
+                && $complaint->due_at->lte(now())
+                && ! $complaint->sla_paused_at
+                && ! in_array($complaint->status, self::SLA_TERMINAL_STATUSES, true));
     }
 
     /**

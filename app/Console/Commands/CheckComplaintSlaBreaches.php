@@ -33,7 +33,7 @@ class CheckComplaintSlaBreaches extends Command
         $query = Complaint::query()
             ->with(['assignedEmployee'])
             ->whereNotNull('due_at')
-            ->where('due_at', '<', now())
+            ->where('due_at', '<=', now())
             ->where('is_sla_breached', false)
             ->whereNull('sla_paused_at')
             ->whereNotIn('status', $this->terminalStatuses);
@@ -57,6 +57,7 @@ class CheckComplaintSlaBreaches extends Command
                     }
 
                     $fromStatus = $complaint->status;
+                    $statusEnteredAt = $complaint->status_entered_at ?? $complaint->created_at ?? now();
                     $toStatus = in_array($fromStatus, $this->escalatableStatuses, true)
                         ? 'escalated'
                         : $fromStatus;
@@ -64,9 +65,10 @@ class CheckComplaintSlaBreaches extends Command
                     $complaint->forceFill([
                         'is_sla_breached' => true,
                         'status' => $toStatus,
+                        'status_entered_at' => $toStatus === $fromStatus ? $complaint->status_entered_at : now(),
                     ])->save();
 
-                    $this->createSystemHistory($complaint, $fromStatus, $toStatus);
+                    $this->createSystemHistory($complaint, $fromStatus, $toStatus, $statusEnteredAt);
 
                     return [$complaint->fresh(['assignedEmployee']), true];
                 });
@@ -117,11 +119,14 @@ class CheckComplaintSlaBreaches extends Command
         return self::SUCCESS;
     }
 
-    private function createSystemHistory(Complaint $complaint, string $fromStatus, string $toStatus): void
+    private function createSystemHistory(Complaint $complaint, string $fromStatus, string $toStatus, mixed $statusEnteredAt = null): void
     {
-        $lastHistory = $complaint->statusHistories()->latest()->first();
-        $startedAt = $lastHistory?->created_at ?? $complaint->created_at ?? now();
-        $durationMinutes = max(0, (int) $startedAt->diffInMinutes(now()));
+        $durationMinutes = 0;
+
+        if ($fromStatus !== $toStatus) {
+            $startedAt = $statusEnteredAt ?? $complaint->status_entered_at ?? $complaint->created_at ?? now();
+            $durationMinutes = max(0, (int) $startedAt->diffInMinutes(now()));
+        }
 
         $complaint->statusHistories()->create([
             'changed_by' => null,

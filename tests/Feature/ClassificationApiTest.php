@@ -246,6 +246,42 @@ class ClassificationApiTest extends TestCase
             ->assertJsonPath('data.assigned_employee_id', null);
     }
 
+    public function test_auto_assignment_is_persisted_for_later_complaint_reads(): void
+    {
+        $citizen = User::factory()->citizen()->create();
+        Sanctum::actingAs($citizen);
+        [$department, $category] = $this->departmentCategory();
+        $this->rule($department, $category, 'lamp', 5);
+        Priority::factory()->create(['code' => 'medium']);
+
+        $created = $this->postJson('/api/v1/citizen/complaints', [
+            'title' => 'Broken lamp',
+            'description' => 'The lamp is not working.',
+        ])->assertCreated();
+
+        $this->getJson('/api/v1/citizen/complaints/'.$created->json('data.id'))
+            ->assertOk()
+            ->assertJsonPath('data.classification.auto_assigned', true);
+    }
+
+    public function test_inactive_or_deleted_classification_targets_are_not_persisted(): void
+    {
+        Sanctum::actingAs(User::factory()->citizen()->create());
+        [$department, $category] = $this->departmentCategory();
+        $category->update(['is_active' => false]);
+        $this->rule($department, $category, 'lamp', 5);
+        Priority::factory()->create(['code' => 'medium']);
+
+        $response = $this->postJson('/api/v1/citizen/complaints', [
+            'title' => 'Broken lamp',
+            'description' => 'The lamp is not working.',
+        ])->assertCreated();
+
+        $this->assertNull($response->json('data.category_id'));
+        $this->assertNull($response->json('data.department_id'));
+        $this->assertFalse((bool) $response->json('data.classification.auto_assigned'));
+    }
+
     public function test_complaint_with_explicit_category_is_not_overwritten(): void
     {
         Sanctum::actingAs(User::factory()->citizen()->create());

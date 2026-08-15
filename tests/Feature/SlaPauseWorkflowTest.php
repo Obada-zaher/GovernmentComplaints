@@ -9,6 +9,8 @@ use App\Models\Department;
 use App\Models\Priority;
 use App\Models\SlaRule;
 use App\Models\User;
+use App\Services\Complaints\ComplaintStatusService;
+use App\Services\Reports\ReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -152,6 +154,38 @@ class SlaPauseWorkflowTest extends TestCase
 
         $this->assertSame([], Storage::disk('public')->allFiles('complaints/'.$complaint->id));
         $this->assertSame(0, $complaint->attachments()->count());
+    }
+
+    public function test_same_status_timeline_events_do_not_reset_the_status_duration_clock(): void
+    {
+        Carbon::setTestNow('2026-08-16 10:00:00');
+        [$employee, , $complaint] = $this->inProgressComplaint(now()->addDay());
+        $admin = User::factory()->admin()->create();
+
+        Carbon::setTestNow('2026-08-16 11:00:00');
+        app(ComplaintStatusService::class)->addTimelineNote($complaint, $admin, 'Priority metadata updated.');
+        Carbon::setTestNow('2026-08-16 12:00:00');
+        app(ComplaintStatusService::class)->addTimelineNote($complaint, $admin, 'Department metadata reviewed.');
+        Carbon::setTestNow('2026-08-16 15:00:00');
+        $this->requestInformation($employee, $complaint);
+
+        $history = $complaint->fresh()->statusHistories()->latest('id')->firstOrFail();
+        $this->assertSame('in_progress', $history->from_status);
+        $this->assertSame('waiting_citizen', $history->to_status);
+        $this->assertSame(300, $history->duration_minutes);
+    }
+
+    public function test_paused_unbreached_complaints_are_not_current_sla_breaches_in_reports_or_listing(): void
+    {
+        Carbon::setTestNow('2026-08-16 10:00:00');
+        [$employee, , $complaint] = $this->inProgressComplaint(now()->addHour());
+        $this->requestInformation($employee, $complaint);
+        $complaint->forceFill(['due_at' => now()->subSecond()])->save();
+
+        $report = app(ReportService::class)->slaPerformance();
+
+        $this->assertSame(0, $report['breached']);
+        $this->assertFalse(app(ReportService::class)->slaBreachesQuery()->whereKey($complaint->id)->exists());
     }
 
     /** @return array{0: User, 1: User, 2: Complaint} */

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\V1\Citizen;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class SyncOfflineComplaintRequest extends FormRequest
 {
@@ -50,8 +51,8 @@ class SyncOfflineComplaintRequest extends FormRequest
             'client_uuid' => ['required', 'string', 'max:255'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
-            'department_id' => ['nullable', 'exists:departments,id'],
-            'category_id' => ['nullable', 'exists:complaint_categories,id'],
+            'department_id' => ['nullable', Rule::exists('departments', 'id')->where(fn ($query) => $query->where('is_active', true)->whereNull('deleted_at'))],
+            'category_id' => ['nullable', Rule::exists('complaint_categories', 'id')->where(fn ($query) => $query->where('is_active', true)->whereNull('deleted_at'))],
             'priority_id' => ['nullable', 'exists:priorities,id'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],

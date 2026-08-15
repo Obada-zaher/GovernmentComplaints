@@ -23,7 +23,10 @@ trait AssertsComplaintWorkflowConsistency
 
         if ($complaint->status === 'waiting_citizen') {
             $this->assertCount(1, $activeRequests);
-            $this->assertNotNull($complaint->sla_paused_at);
+
+            if ($complaint->due_at && ! $complaint->is_sla_breached) {
+                $this->assertNotNull($complaint->sla_paused_at);
+            }
         }
 
         if (in_array($complaint->status, ['resolved', 'closed', 'rejected'], true)) {

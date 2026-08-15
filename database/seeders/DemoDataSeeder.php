@@ -7,12 +7,10 @@ use App\Models\ComplaintAssignment;
 use App\Models\ComplaintAttachment;
 use App\Models\ComplaintCategory;
 use App\Models\ComplaintStatusHistory;
-use App\Models\Department;
 use App\Models\Priority;
 use App\Models\User;
 use App\Models\UserNotification;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class DemoDataSeeder extends Seeder
 {
@@ -24,73 +22,50 @@ class DemoDataSeeder extends Seeder
             PrioritiesSeeder::class,
             SlaRulesSeeder::class,
             ClassificationRuleSeeder::class,
+            DemoUsersSeeder::class,
         ]);
 
-        $admin = User::query()->updateOrCreate(
-            ['email' => 'admin@gcms.test'],
-            [
-                'name' => 'Demo Admin',
-                'phone' => '0990000001',
-                'national_id' => '10000000001',
-                'password' => Hash::make('password'),
-                'role' => 'admin',
-                'department_id' => null,
-                'is_active' => true,
-                'email_verified_at' => now(),
-            ],
-        );
-
-        $departments = Department::query()->pluck('id', 'code');
-        $employees = collect([
-            ['name' => 'Municipality Employee', 'email' => 'employee@gcms.test', 'phone' => '0990000002', 'department' => 'municipality'],
-            ['name' => 'Electricity Employee', 'email' => 'electricity.employee@gcms.test', 'phone' => '0990000004', 'department' => 'electricity'],
-            ['name' => 'Water Employee', 'email' => 'water.employee@gcms.test', 'phone' => '0990000005', 'department' => 'water'],
-            ['name' => 'Health Employee', 'email' => 'health.employee@gcms.test', 'phone' => '0990000006', 'department' => 'health'],
-        ])->map(fn (array $employee): User => User::query()->updateOrCreate(
-            ['email' => $employee['email']],
-            [
-                'name' => $employee['name'],
-                'phone' => $employee['phone'],
-                'national_id' => fake()->unique()->numerify('2##########'),
-                'password' => Hash::make('password'),
-                'role' => 'employee',
-                'department_id' => $departments[$employee['department']],
-                'is_active' => true,
-                'email_verified_at' => now(),
-            ],
-        ));
-
-        $citizens = collect([
-            ['name' => 'Citizen User', 'email' => 'citizen@gcms.test', 'phone' => '0990000003'],
-            ['name' => 'Demo Citizen One', 'email' => 'citizen.one@gcms.test', 'phone' => '0990000007'],
-            ['name' => 'Demo Citizen Two', 'email' => 'citizen.two@gcms.test', 'phone' => '0990000008'],
-        ])->map(fn (array $citizen): User => User::query()->updateOrCreate(
-            ['email' => $citizen['email']],
-            [
-                'name' => $citizen['name'],
-                'phone' => $citizen['phone'],
-                'national_id' => fake()->unique()->numerify('3##########'),
-                'password' => Hash::make('password'),
-                'role' => 'citizen',
-                'department_id' => null,
-                'is_active' => true,
-                'email_verified_at' => now(),
-            ],
-        ));
+        $admin = User::query()->where('email', DemoUsersSeeder::ADMIN_EMAIL)->firstOrFail();
+        $employees = User::query()
+            ->whereIn('email', [
+                DemoUsersSeeder::PRIMARY_EMPLOYEE_EMAIL,
+                'electricity.employee@gcms.test',
+                'water.employee@gcms.test',
+                'transportation.employee@gcms.test',
+                'health.employee@gcms.test',
+            ])
+            ->get()
+            ->keyBy('email');
+        $citizenEmails = [
+            DemoUsersSeeder::PRIMARY_CITIZEN_EMAIL,
+            'citizen.one@gcms.test',
+            'citizen.two@gcms.test',
+            'citizen.three@gcms.test',
+            'citizen.four@gcms.test',
+            'citizen.five@gcms.test',
+        ];
+        $seededCitizens = User::query()
+            ->where('role', 'citizen')
+            ->whereIn('email', $citizenEmails)
+            ->get()
+            ->keyBy('email');
+        $citizens = collect($citizenEmails)
+            ->map(fn (string $email): User => $seededCitizens->get($email) ?? throw new \RuntimeException("Missing demo citizen {$email}."))
+            ->values();
 
         $priorities = Priority::query()->pluck('id', 'code');
         $categories = ComplaintCategory::query()->with('department')->get()->keyBy('code');
 
         $demoComplaints = [
             ['submitted', 'municipality-road-damage', 'medium', 'Pothole near school entrance', null, false],
-            ['under_review', 'municipality-waste-collection', 'low', 'Garbage containers need collection', $employees[0], false],
-            ['assigned', 'electricity-power-outage', 'high', 'Power outage in neighborhood', $employees[1], false],
-            ['in_progress', 'water-water-leakage', 'urgent', 'Large water leakage on main road', $employees[2], true],
-            ['waiting_citizen', 'transportation-traffic-signal-issue', 'medium', 'Traffic signal timing issue', $employees[0], false],
-            ['resolved', 'health-clinic-service-complaint', 'medium', 'Clinic appointment delay resolved', $employees[3], false],
-            ['closed', 'municipality-street-lighting', 'low', 'Street light repaired and closed', $employees[0], false],
+            ['under_review', 'municipality-waste-collection', 'low', 'Garbage containers need collection', $employees[DemoUsersSeeder::PRIMARY_EMPLOYEE_EMAIL], false],
+            ['assigned', 'electricity-power-outage', 'high', 'Power outage in neighborhood', $employees['electricity.employee@gcms.test'], false],
+            ['in_progress', 'water-water-leakage', 'urgent', 'Large water leakage on main road', $employees['water.employee@gcms.test'], true],
+            ['waiting_citizen', 'transportation-traffic-signal-issue', 'medium', 'Traffic signal timing issue', $employees['transportation.employee@gcms.test'], false],
+            ['resolved', 'health-clinic-service-complaint', 'medium', 'Clinic appointment delay resolved', $employees['health.employee@gcms.test'], false],
+            ['closed', 'municipality-street-lighting', 'low', 'Street light repaired and closed', $employees[DemoUsersSeeder::PRIMARY_EMPLOYEE_EMAIL], false],
             ['rejected', 'health-public-health-issue', 'low', 'Duplicate public health complaint', null, false],
-            ['escalated', 'electricity-dangerous-electrical-wire', 'urgent', 'Exposed electrical wire escalated', $employees[1], true],
+            ['escalated', 'electricity-dangerous-electrical-wire', 'urgent', 'Exposed electrical wire escalated', $employees['electricity.employee@gcms.test'], true],
         ];
 
         foreach ($demoComplaints as $index => [$status, $categoryCode, $priorityCode, $title, $employee, $breached]) {

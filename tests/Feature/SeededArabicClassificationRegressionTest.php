@@ -62,6 +62,27 @@ class SeededArabicClassificationRegressionTest extends TestCase
             ->assertJsonPath('data.confidence', 0);
     }
 
+    public function test_generic_entity_words_do_not_cross_the_auto_assignment_threshold(): void
+    {
+        Sanctum::actingAs(User::factory()->citizen()->create());
+        $this->seedClassificationData();
+
+        foreach ([
+            ['عمود', 'يوجد عمود مائل'],
+            ['مشكلة مياه', 'هناك مشكلة في المياه'],
+            ['الكهرباء', 'مشكلة في الكهرباء'],
+            ['ضوء', 'يوجد ضوء ضعيف'],
+            ['مشكلة في الطريق', 'الطريق الرئيسي'],
+        ] as [$title, $description]) {
+            $response = $this->postJson('/api/v1/classification/complaints/preview', [
+                'title' => $title,
+                'description' => $description,
+            ])->assertOk();
+
+            $this->assertLessThan(60, $response->json('data.confidence'), $title);
+        }
+    }
+
     public function test_preview_contract_and_arabic_localization_remain_unchanged(): void
     {
         Sanctum::actingAs(User::factory()->citizen()->create());
@@ -91,6 +112,13 @@ class SeededArabicClassificationRegressionTest extends TestCase
         Sanctum::actingAs(User::factory()->citizen()->create());
         $this->seedClassificationData();
         $roadDamage = ComplaintCategory::query()->where('code', 'municipality-road-damage')->firstOrFail();
+
+        $this->postJson('/api/v1/citizen/complaints', [
+            'title' => 'مشكلة مياه',
+            'description' => 'هناك مشكلة في المياه',
+        ])->assertCreated()
+            ->assertJsonPath('data.category', null)
+            ->assertJsonPath('data.classification.auto_assigned', false);
 
         $this->postJson('/api/v1/citizen/complaints', [
             'title' => 'عمود انارة',

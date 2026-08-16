@@ -15,6 +15,8 @@ class ComplaintClassificationService
 
     private const MINIMUM_EVIDENCE = 3;
 
+    private const MINIMUM_STRONG_RULE_WEIGHT = 3;
+
     private const HIGH_CONFIDENCE_EVIDENCE = 5;
 
     /**
@@ -37,6 +39,8 @@ class ComplaintClassificationService
         $matchedKeywords = [];
         $usedRules = [];
         $totalMatchedScore = 0;
+        $strongDepartmentEvidence = [];
+        $strongCategoryEvidence = [];
 
         foreach ($rules as $rule) {
             $keyword = $rule->normalized_keyword ?: $this->normalize($rule->keyword);
@@ -51,10 +55,18 @@ class ComplaintClassificationService
 
             if ($departmentId) {
                 $departmentScores[$departmentId] = ($departmentScores[$departmentId] ?? 0) + $weight;
+
+                if ($weight >= self::MINIMUM_STRONG_RULE_WEIGHT) {
+                    $strongDepartmentEvidence[$departmentId] = true;
+                }
             }
 
             if ($categoryId) {
                 $categoryScores[$categoryId] = ($categoryScores[$categoryId] ?? 0) + $weight;
+
+                if ($weight >= self::MINIMUM_STRONG_RULE_WEIGHT) {
+                    $strongCategoryEvidence[$categoryId] = true;
+                }
             }
 
             $totalMatchedScore += $weight;
@@ -73,8 +85,11 @@ class ComplaintClassificationService
         }
 
         [$department, $category, $winningScore] = $this->winner($departmentScores, $categoryScores);
+        $winnerHasStrongEvidence = $category
+            ? ($strongCategoryEvidence[$category->id] ?? false)
+            : ($department ? ($strongDepartmentEvidence[$department->id] ?? false) : false);
 
-        if ($winningScore < self::MINIMUM_EVIDENCE) {
+        if ($winningScore < self::MINIMUM_EVIDENCE || ! $winnerHasStrongEvidence) {
             return $this->unreliableResult($matchedKeywords, $usedRules, $departmentScores, $categoryScores, $totalMatchedScore, $winningScore);
         }
 

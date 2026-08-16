@@ -161,6 +161,65 @@
                     ]
                 },
                 {
+                    "name": "Update Profile",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/profile",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "profile"
+                            ]
+                        },
+                        "description": "Purpose: Update the authenticated citizen's editable profile fields. Only name and phone are accepted; email remains read-only because it is used by the OTP identity flow.\nRequired role: authenticated active user\nRequired token: {{citizen_token}}\nExpected response: data.user has the same shape as GET /auth/me.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Updated Citizen Name\",\n    \"phone\": \"0991234567\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response returns the authenticated user', function () { var json = pm.response.json(); pm.expect(json.data).to.have.property('user'); pm.expect(json.data.user).to.have.property('id'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
                     "name": "Logout",
                     "request": {
                         "method": "POST",

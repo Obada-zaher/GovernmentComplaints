@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Models\Department;
 use App\Models\OtpCode;
 use App\Models\User;
+use App\Models\UserDeviceToken;
 use App\Notifications\Auth\OtpCodeNotification;
 use App\Notifications\Auth\ResetPasswordNotification;
+use App\Services\Auth\AuthSessionService;
 use App\Services\OtpService;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -464,6 +466,23 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('success', false);
     }
 
+    public function test_change_password_requires_a_confirmed_password_of_at_least_eight_characters(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('password')]);
+        $token = $user->createToken('api-token')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/v1/auth/change-password', [
+                'current_password' => 'password',
+                'password' => 'short',
+                'password_confirmation' => 'different',
+            ])->assertUnprocessable()
+            ->assertJsonPath('success', false)
+            ->assertJsonStructure(['errors' => ['password']]);
+
+        $this->assertTrue(Hash::check('password', $user->fresh()->password));
+    }
+
     public function test_change_password_revokes_other_tokens(): void
     {
         $user = User::factory()->create(['password' => Hash::make('password')]);
@@ -506,6 +525,58 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('success', true);
 
         $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_logout_all_deactivates_and_removes_only_own_device_tokens(): void
+    {
+        $user = User::factory()->citizen()->create();
+        $otherUser = User::factory()->citizen()->create();
+        $currentToken = $user->createToken('current')->plainTextToken;
+        $user->createToken('other');
+        $otherUser->createToken('other-user-token');
+        $firstDeviceToken = UserDeviceToken::factory()->create(['user_id' => $user->id]);
+        $secondDeviceToken = UserDeviceToken::factory()->create(['user_id' => $user->id]);
+        $otherDeviceToken = UserDeviceToken::factory()->create(['user_id' => $otherUser->id]);
+
+        $this->withHeader('Authorization', 'Bearer '.$currentToken)
+            ->postJson('/api/v1/auth/logout-all')
+            ->assertOk();
+
+        $this->assertDatabaseCount('personal_access_tokens', 1);
+        $this->assertSoftDeleted('user_device_tokens', ['id' => $firstDeviceToken->id]);
+        $this->assertSoftDeleted('user_device_tokens', ['id' => $secondDeviceToken->id]);
+        $this->assertFalse((bool) UserDeviceToken::withTrashed()->findOrFail($firstDeviceToken->id)->is_active);
+        $this->assertFalse((bool) UserDeviceToken::withTrashed()->findOrFail($secondDeviceToken->id)->is_active);
+        $this->assertDatabaseHas('user_device_tokens', [
+            'id' => $otherDeviceToken->id,
+            'user_id' => $otherUser->id,
+            'is_active' => true,
+            'deleted_at' => null,
+        ]);
+    }
+
+    public function test_logout_all_rolls_back_tokens_when_device_token_cleanup_fails(): void
+    {
+        $user = User::factory()->citizen()->create();
+        $currentToken = $user->createToken('current')->plainTextToken;
+        $deviceToken = UserDeviceToken::factory()->create(['user_id' => $user->id]);
+        $sessions = \Mockery::mock(AuthSessionService::class)->makePartial();
+        $sessions->shouldAllowMockingProtectedMethods();
+        $sessions->shouldReceive('deactivateAndDeleteDeviceTokens')
+            ->once()
+            ->andThrow(new \RuntimeException('Device token cleanup failed.'));
+        $this->app->instance(AuthSessionService::class, $sessions);
+
+        $this->withHeader('Authorization', 'Bearer '.$currentToken)
+            ->postJson('/api/v1/auth/logout-all')
+            ->assertInternalServerError();
+
+        $this->assertDatabaseCount('personal_access_tokens', 1);
+        $this->assertDatabaseHas('user_device_tokens', [
+            'id' => $deviceToken->id,
+            'is_active' => true,
+            'deleted_at' => null,
+        ]);
     }
 
     public function test_citizen_cannot_access_admin_route(): void

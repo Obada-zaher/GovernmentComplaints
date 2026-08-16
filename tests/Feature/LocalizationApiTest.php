@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\UserNotification;
 use App\Services\Classification\ComplaintClassificationService;
 use App\Services\Notifications\NotificationService;
+use App\Support\LocalizedText;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
@@ -95,6 +96,19 @@ class LocalizationApiTest extends TestCase
             ->assertJsonPath('data.priorities.0.level', 4)
             ->assertJsonPath('data.priorities.0.color', '#ef4444')
             ->assertJsonPath('data.priorities.0.name', 'عاجلة');
+    }
+
+    public function test_health_display_name_localizes_without_changing_operational_values(): void
+    {
+        $english = $this->withHeader('Accept-Language', 'en')->getJson('/api/v1/health')->assertOk()->json();
+        $arabic = $this->withHeader('Accept-Language', 'ar')->getJson('/api/v1/health')->assertOk()->json();
+
+        $this->assertSame($this->keyShape($english), $this->keyShape($arabic));
+        $this->assertSame('Government Complaints Management System', $english['data']['app']);
+        $this->assertSame('نظام إدارة الشكاوى الحكومية', $arabic['data']['app']);
+        foreach (['status', 'environment', 'database', 'queue', 'version'] as $field) {
+            $this->assertSame($english['data'][$field], $arabic['data'][$field]);
+        }
     }
 
     public function test_complaint_localizes_only_system_display_text_and_keeps_the_same_shape(): void
@@ -218,6 +232,84 @@ class LocalizationApiTest extends TestCase
             ->getJson('/api/v1/citizen/complaints')
             ->assertUnauthorized()
             ->assertJsonPath('message', 'غير مصادق عليه.');
+    }
+
+    public function test_waiting_citizen_transition_error_is_localized_by_the_real_endpoint(): void
+    {
+        $department = Department::factory()->create();
+        $employee = User::factory()->employee()->create(['department_id' => $department->id]);
+        $complaint = Complaint::factory()->create([
+            'department_id' => $department->id,
+            'assigned_employee_id' => $employee->id,
+            'status' => 'waiting_citizen',
+        ]);
+        $complaint->informationRequests()->create([
+            'requested_by' => $employee->id,
+            'message' => 'Please provide the requested document.',
+            'status' => 'pending',
+            'requested_at' => now(),
+        ]);
+        Sanctum::actingAs($employee);
+
+        $english = $this->withHeader('Accept-Language', 'en')
+            ->patchJson("/api/v1/employee/complaints/{$complaint->id}/status", ['status' => 'in_progress'])
+            ->assertUnprocessable()
+            ->json();
+        $arabic = $this->withHeader('Accept-Language', 'ar')
+            ->patchJson("/api/v1/employee/complaints/{$complaint->id}/status", ['status' => 'in_progress'])
+            ->assertUnprocessable()
+            ->json();
+
+        $this->assertSame($this->keyShape($english), $this->keyShape($arabic));
+        $this->assertSame(array_keys($english['errors']), array_keys($arabic['errors']));
+        $this->assertSame('Validation failed.', $english['message']);
+        $this->assertSame('The citizen response must be received before continuing this complaint.', $english['errors']['status'][0]);
+        $this->assertSame('فشل التحقق من صحة البيانات.', $arabic['message']);
+        $this->assertSame('يجب استلام رد المواطن قبل متابعة هذه الشكوى.', $arabic['errors']['status'][0]);
+    }
+
+    public function test_audited_system_messages_have_arabic_translations(): void
+    {
+        app()->setLocale('ar');
+
+        $translations = [
+            'Registration successful. A verification code has been sent to your email.' => 'تم التسجيل بنجاح. تم إرسال رمز التحقق إلى بريدك الإلكتروني.',
+            'Government Complaints Management System' => 'نظام إدارة الشكاوى الحكومية',
+            'Profile updated successfully.' => 'تم تحديث الملف الشخصي بنجاح.',
+            'Complaint assigned successfully.' => 'تم تعيين الشكوى بنجاح.',
+            'Complaint department updated successfully.' => 'تم تحديث قسم الشكوى بنجاح.',
+            'Complaint priority updated successfully.' => 'تم تحديث أولوية الشكوى بنجاح.',
+            'The selected category is not available.' => 'الفئة المحددة غير متاحة.',
+            'The selected department is not available.' => 'القسم المحدد غير متاح.',
+            'A submitted complaint must be moved to under review before assignment.' => 'يجب نقل الشكوى المقدمة إلى قيد المراجعة قبل تعيينها.',
+            'Terminal complaints cannot be assigned or reassigned.' => 'لا يمكن تعيين الشكاوى النهائية أو إعادة تعيينها.',
+            'Reassign the active complaint before changing its department.' => 'أعد تعيين الشكوى النشطة قبل تغيير قسمها.',
+            'SLA-affecting complaint changes are not allowed while waiting for citizen information.' => 'لا يُسمح بإجراء تغييرات تؤثر في اتفاقية مستوى الخدمة أثناء انتظار معلومات المواطن.',
+            'The complaint is no longer available for processing.' => 'لم تعد الشكوى متاحة للمعالجة.',
+            'A note is required when requesting additional information from the citizen.' => 'يلزم إدخال ملاحظة عند طلب معلومات إضافية من المواطن.',
+            'The complaint already has an active information request.' => 'يوجد بالفعل طلب معلومات نشط لهذه الشكوى.',
+            'The citizen response must be received before continuing this complaint.' => 'يجب استلام رد المواطن قبل متابعة هذه الشكوى.',
+            'You cannot add attachments to this complaint.' => 'لا يمكنك إضافة مرفقات إلى هذه الشكوى.',
+            'Unable to store the complaint attachment.' => 'تعذر حفظ مرفق الشكوى.',
+            "Reassign the employee's active complaints before changing this account." => 'أعد تعيين الشكاوى النشطة للموظف قبل تغيير هذا الحساب.',
+            'Citizen provided additional information' => 'قدّم المواطن معلومات إضافية.',
+            'Additional information is required' => 'مطلوب معلومات إضافية.',
+            'SLA rule created successfully.' => 'تم إنشاء قاعدة اتفاقية مستوى الخدمة بنجاح.',
+            'User updated successfully.' => 'تم تحديث المستخدم بنجاح.',
+            'Classification rule updated successfully.' => 'تم تحديث قاعدة التصنيف بنجاح.',
+            'Offline complaint synchronized successfully.' => 'تمت مزامنة الشكوى غير المتصلة بنجاح.',
+            'Complaint SLA breached' => 'تجاوزت الشكوى اتفاقية مستوى الخدمة',
+            'Additional information is required for complaint CMP-1: Please send a photo' => 'مطلوب معلومات إضافية للشكوى CMP-1: Please send a photo',
+            'The citizen provided the requested information for complaint CMP-1.' => 'قدّم المواطن المعلومات المطلوبة للشكوى CMP-1.',
+            'A complaint in waiting_citizen status must have a valid assigned employee.' => 'يجب أن تحتوي الشكوى بالحالة waiting_citizen على موظف معيّن صالح.',
+            'The following fields are not editable: email, role.' => 'لا يمكن تعديل الحقول التالية: email, role.',
+        ];
+
+        foreach ($translations as $english => $arabic) {
+            $this->assertSame($arabic, LocalizedText::resolve($english), $english);
+        }
+
+        app()->setLocale('en');
     }
 
     public function test_notifications_and_reports_localize_display_text_with_identical_contracts_and_numbers(): void

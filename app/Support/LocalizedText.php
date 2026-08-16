@@ -54,6 +54,10 @@ class LocalizedText
             '/^Complaint (?<complaint_number>.+) was escalated by an employee\.$/' => 'api.patterns.escalated',
             '/^Complaint (?<complaint_number>.+) has breached its SLA deadline\.$/' => 'api.patterns.sla_breached',
             '/^Invalid status transition from (?<from_status>.+) to (?<to_status>.+)\.$/' => 'api.patterns.invalid_status_transition',
+            '/^Additional information is required for complaint (?<complaint_number>.+): (?<note>.*)$/' => 'api.patterns.additional_information_required',
+            '/^The citizen provided the requested information for complaint (?<complaint_number>.+)\.$/' => 'api.patterns.citizen_information_provided',
+            '/^A complaint in (?<status>.+) status must have a valid assigned employee\.$/' => 'api.patterns.valid_assignee_required',
+            '/^The following fields are not editable: (?<fields>.+)\.$/' => 'api.patterns.non_editable_fields',
         ];
     }
 }

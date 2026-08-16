@@ -44,6 +44,7 @@ Route::prefix('v1')->group(function (): void {
 
         Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
             Route::get('me', [AuthController::class, 'me']);
+            Route::patch('profile', [AuthController::class, 'updateProfile']);
             Route::post('change-password', [AuthController::class, 'changePassword'])->middleware('throttle:auth-change-password');
             Route::post('logout', [AuthController::class, 'logout']);
             Route::post('logout-all', [AuthController::class, 'logoutAll']);

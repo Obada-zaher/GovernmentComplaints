@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Support\LocalizedText;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -15,7 +16,7 @@ class HealthController extends Controller
     public function __invoke(): JsonResponse
     {
         return $this->successResponse('System health retrieved successfully.', [
-            'app' => 'Government Complaints Management System',
+            'app' => LocalizedText::resolve('Government Complaints Management System'),
             'status' => 'ok',
             'environment' => app()->environment(),
             'database' => $this->databaseStatus(),

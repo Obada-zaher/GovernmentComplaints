@@ -9,11 +9,13 @@ use App\Http\Requests\Api\V1\Auth\LoginRequest;
 use App\Http\Requests\Api\V1\Auth\RegisterRequest;
 use App\Http\Requests\Api\V1\Auth\ResendOtpRequest;
 use App\Http\Requests\Api\V1\Auth\ResetPasswordRequest;
+use App\Http\Requests\Api\V1\Auth\UpdateProfileRequest;
 use App\Http\Requests\Api\V1\Auth\VerifyOtpRequest;
 use App\Http\Resources\Api\V1\UserResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\User;
 use App\Services\Auth\AuthEventService;
+use App\Services\Auth\AuthSessionService;
 use App\Services\AuthService;
 use App\Services\OtpService;
 use Illuminate\Http\JsonResponse;
@@ -29,6 +31,7 @@ class AuthController extends Controller
         private readonly AuthService $authService,
         private readonly OtpService $otpService,
         private readonly AuthEventService $authEventService,
+        private readonly AuthSessionService $authSessionService,
     ) {}
 
     public function register(RegisterRequest $request): JsonResponse
@@ -194,6 +197,16 @@ class AuthController extends Controller
         ]);
     }
 
+    public function updateProfile(UpdateProfileRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        $user->fill($request->validated())->save();
+
+        return $this->successResponse('Profile updated successfully.', [
+            'user' => new UserResource($user->fresh('department')),
+        ]);
+    }
+
     public function logout(Request $request): JsonResponse
     {
         $this->authEventService->record('logout', $request->user(), $request);
@@ -204,8 +217,8 @@ class AuthController extends Controller
 
     public function logoutAll(Request $request): JsonResponse
     {
+        $this->authSessionService->logoutAll($request->user());
         $this->authEventService->record('logout_all', $request->user(), $request);
-        $request->user()->tokens()->delete();
 
         return $this->successResponse('Logged out from all devices successfully.');
     }

@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api\V1\Citizen;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Citizen\AddComplaintAttachmentRequest;
+use App\Http\Requests\Api\V1\Citizen\CheckDuplicateComplaintRequest;
 use App\Http\Requests\Api\V1\Citizen\StoreComplaintRequest;
 use App\Http\Resources\Api\V1\ComplaintResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\Complaint;
+use App\Services\Complaints\DuplicateComplaintDetectionService;
 use App\Services\ComplaintService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +20,10 @@ class ComplaintController extends Controller
 {
     use ApiResponse;
 
-    public function __construct(private readonly ComplaintService $complaintService) {}
+    public function __construct(
+        private readonly ComplaintService $complaintService,
+        private readonly DuplicateComplaintDetectionService $duplicateComplaintDetectionService,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -55,6 +60,28 @@ class ComplaintController extends Controller
         $complaint = $this->complaintService->create($request->user(), $request->validated());
 
         return $this->successResponse('Complaint created successfully.', new ComplaintResource($complaint), 201);
+    }
+
+    public function checkDuplicates(CheckDuplicateComplaintRequest $request): JsonResponse
+    {
+        $matches = $this->duplicateComplaintDetectionService->find(
+            (float) $request->validated('latitude'),
+            (float) $request->validated('longitude'),
+            (int) $request->validated('category_id'),
+        );
+
+        return $this->successResponse('Duplicate complaint check completed successfully.', [
+            'has_possible_duplicate' => $matches !== [],
+            'matches' => array_map(fn (array $match): array => [
+                'id' => $match['complaint']->id,
+                'complaint_number' => $match['complaint']->complaint_number,
+                'title' => $match['complaint']->title,
+                'status' => $match['complaint']->status,
+                'category_id' => $match['complaint']->category_id,
+                'distance_meters' => round($match['distance_meters'], 1),
+                'created_at' => $match['complaint']->created_at?->toISOString(),
+            ], $matches),
+        ]);
     }
 
     public function show(Request $request, Complaint $complaint): JsonResponse

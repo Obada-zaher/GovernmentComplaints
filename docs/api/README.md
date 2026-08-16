@@ -115,6 +115,10 @@ List endpoints return pagination metadata in `meta`, typically:
 
 Use `per_page` where supported. Admin user and employee lists cap `per_page` at 100.
 
+## Citizen Duplicate Warning Check
+
+`POST /api/v1/citizen/complaints/check-duplicates` accepts `latitude`, `longitude`, and an active `category_id`. It is a warning-only, read-only check: it looks for non-deleted complaints in the same category with an active status within the configured 15-meter default radius, returning only a limited public match summary. Coordinates `0,0` return no matches. `POST /api/v1/citizen/complaints` remains unchanged and always creates a valid complaint even when this check finds a match.
+
 ## File Uploads
 
 Complaint attachments use `multipart/form-data` with `attachments[]`.

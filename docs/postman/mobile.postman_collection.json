@@ -479,6 +479,66 @@
                     ]
                 },
                 {
+                    "name": "Check Possible Duplicate Complaints",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/citizen/complaints/check-duplicates",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "citizen",
+                                "complaints",
+                                "check-duplicates"
+                            ]
+                        },
+                        "description": "Purpose: Warn a citizen about nearby active complaints in the same category before creating one. This is read-only and warning-only: it does not create, block, or modify complaints. Default radius: 15 meters.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with has_possible_duplicate and a privacy-limited nearest-first matches list.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"latitude\": 33.5138,\n    \"longitude\": 36.2765,\n    \"category_id\": \"{{category_id}}\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response has duplicate-check data', function () { var json = pm.response.json(); pm.expect(json.success).to.eql(true); pm.expect(json.data).to.have.property('has_possible_duplicate'); pm.expect(json.data).to.have.property('matches'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
                     "name": "Create Complaint With Attachment",
                     "request": {
                         "method": "POST",

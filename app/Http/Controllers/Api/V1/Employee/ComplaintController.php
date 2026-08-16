@@ -180,6 +180,7 @@ class ComplaintController extends Controller
             'attachments.uploadedBy',
             'statusHistories' => fn ($query) => $query->with('changedBy')->oldest(),
             'assignments' => fn ($query) => $query->with(['assignedBy', 'assignedTo', 'department'])->oldest(),
+            'activeInformationRequest.requestedBy',
         ]);
     }
 

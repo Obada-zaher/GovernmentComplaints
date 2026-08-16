@@ -80,6 +80,12 @@ class ComplaintResource extends JsonResource
             'timeline' => $this->whenLoaded('statusHistories', fn () => ComplaintStatusHistoryResource::collection($this->statusHistories)),
             'status_histories' => $this->whenLoaded('statusHistories', fn () => ComplaintStatusHistoryResource::collection($this->statusHistories)),
             'assignments' => $this->whenLoaded('assignments', fn () => ComplaintAssignmentResource::collection($this->assignments)),
+            'active_information_request' => $this->when(
+                $isDetailed && $this->relationLoaded('activeInformationRequest'),
+                fn () => $this->activeInformationRequest
+                    ? new ComplaintInformationRequestResource($this->activeInformationRequest)
+                    : null,
+            ),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

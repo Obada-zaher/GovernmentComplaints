@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Complaint extends Model
@@ -102,6 +103,15 @@ class Complaint extends Model
     public function informationRequests(): HasMany
     {
         return $this->hasMany(ComplaintInformationRequest::class);
+    }
+
+    public function activeInformationRequest(): HasOne
+    {
+        return $this->hasOne(ComplaintInformationRequest::class)
+            ->ofMany([
+                'requested_at' => 'max',
+                'id' => 'max',
+            ], fn ($query) => $query->whereIn('status', ['pending', 'responded']));
     }
 
     public function notifications(): HasMany

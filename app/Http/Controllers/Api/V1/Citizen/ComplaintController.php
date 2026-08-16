@@ -115,6 +115,7 @@ class ComplaintController extends Controller
             'assignedEmployee',
             'attachments.uploadedBy',
             'statusHistories' => fn ($query) => $query->with('changedBy')->oldest(),
+            'activeInformationRequest.requestedBy',
         ]);
 
         return $this->successResponse('Complaint retrieved successfully.', new ComplaintResource($complaint));

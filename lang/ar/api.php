@@ -81,6 +81,7 @@ return [
         'SLA rule retrieved successfully.' => 'تم جلب قاعدة اتفاقية مستوى الخدمة بنجاح.',
         'SLA rule updated successfully.' => 'تم تحديث قاعدة اتفاقية مستوى الخدمة بنجاح.',
         'SLA rule deleted successfully.' => 'تم حذف قاعدة اتفاقية مستوى الخدمة بنجاح.',
+        'An SLA rule already exists for the selected department, category, and priority.' => 'توجد قاعدة اتفاقية مستوى خدمة بالفعل للقسم والفئة والأولوية المحددة.',
         'Complaint classification completed successfully.' => 'تم تصنيف الشكوى بنجاح.',
         'Classification rules retrieved successfully.' => 'تم جلب قواعد التصنيف بنجاح.',
         'Classification rule created successfully.' => 'تم إنشاء قاعدة التصنيف بنجاح.',

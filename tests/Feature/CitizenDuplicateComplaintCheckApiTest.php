@@ -73,6 +73,29 @@ class CitizenDuplicateComplaintCheckApiTest extends TestCase
             ->assertJsonValidationErrors(['category_id']);
     }
 
+    public function test_duplicate_check_success_message_is_localized_to_arabic(): void
+    {
+        $this->actingAsCitizen();
+        [, $category] = $this->referenceData();
+
+        $this->withHeader('Accept-Language', 'ar')
+            ->postJson(self::ENDPOINT, $this->payload(['category_id' => $category->id]))
+            ->assertOk()
+            ->assertJsonPath('message', 'تم التحقق من وجود شكاوى محتملة مكررة بنجاح.');
+    }
+
+    public function test_duplicate_check_custom_category_validation_error_is_localized_to_arabic(): void
+    {
+        $this->actingAsCitizen();
+        $inactiveDepartment = Department::factory()->create(['is_active' => false]);
+        $category = ComplaintCategory::factory()->create(['department_id' => $inactiveDepartment->id]);
+
+        $this->withHeader('Accept-Language', 'ar')
+            ->postJson(self::ENDPOINT, $this->payload(['category_id' => $category->id]))
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.category_id.0', 'الفئة المحددة غير صالحة.');
+    }
+
     public function test_it_returns_no_match_when_no_candidate_matches_the_rules(): void
     {
         $this->actingAsCitizen();

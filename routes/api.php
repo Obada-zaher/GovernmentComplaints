@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\Admin\SlaRuleController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\Citizen\ComplaintController as CitizenComplaintController;
+use App\Http\Controllers\Api\V1\Citizen\DashboardController;
 use App\Http\Controllers\Api\V1\Citizen\OfflineComplaintSyncController;
 use App\Http\Controllers\Api\V1\Classification\ComplaintClassificationController;
 use App\Http\Controllers\Api\V1\Employee\ComplaintController as EmployeeComplaintController;
@@ -78,6 +79,7 @@ Route::prefix('v1')->group(function (): void {
         ->middleware(['auth:sanctum', 'active.user', 'role:citizen'])
         ->group(function (): void {
             Route::get('ping', [RolePingController::class, 'citizen']);
+            Route::get('dashboard', DashboardController::class);
             Route::get('complaints', [CitizenComplaintController::class, 'index']);
             Route::post('complaints', [CitizenComplaintController::class, 'store']);
             Route::post('complaints/check-duplicates', [CitizenComplaintController::class, 'checkDuplicates']);

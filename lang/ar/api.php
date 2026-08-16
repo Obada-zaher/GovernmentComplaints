@@ -46,6 +46,7 @@ return [
         'Priority deleted successfully.' => 'تم حذف الأولوية بنجاح.',
         'Complaint statuses retrieved successfully.' => 'تم جلب حالات الشكاوى بنجاح.',
         'Complaints retrieved successfully.' => 'تم جلب الشكاوى بنجاح.',
+        'Dashboard retrieved successfully.' => 'تم جلب لوحة معلومات المواطن بنجاح.',
         'Duplicate complaint check completed successfully.' => 'تم التحقق من وجود شكاوى محتملة مكررة بنجاح.',
         'Complaint created successfully.' => 'تم إنشاء الشكوى بنجاح.',
         'Complaint retrieved successfully.' => 'تم جلب الشكوى بنجاح.',

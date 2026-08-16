@@ -11,9 +11,11 @@ use App\Models\SlaRule;
 use App\Models\User;
 use App\Services\Complaints\ComplaintStatusService;
 use App\Services\Reports\ReportService;
+use App\Services\Sla\SlaPauseService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\AssertsComplaintWorkflowConsistency;
@@ -68,6 +70,102 @@ class SlaPauseWorkflowTest extends TestCase
         $complaint = $complaint->fresh();
         $this->assertSame($dueAt->copy()->addHours(5)->timestamp, $complaint->due_at->timestamp);
         $this->assertSame(18000, $complaint->sla_total_paused_seconds);
+    }
+
+    public function test_microsecond_pause_duration_is_floored_before_persistence_and_deadline_extension(): void
+    {
+        $pausedAt = Carbon::parse('2026-08-16 10:00:00.100000', 'UTC');
+        $resumedAt = Carbon::parse('2026-08-16 10:41:44.224769', 'UTC');
+        $expectedPausedSeconds = 2504;
+        Carbon::setTestNow($pausedAt);
+        [$employee, $citizen, $complaint] = $this->inProgressComplaint(now()->addHours(8));
+        $originalDueAt = $complaint->due_at->copy();
+        $this->requestInformation($employee, $complaint);
+        $this->respond($citizen, $complaint);
+
+        $this->assertEqualsWithDelta(2504.124769, $pausedAt->diffInSeconds($resumedAt), 0.000001);
+
+        $complaint = $this->persistMicrosecondPause($complaint, $pausedAt);
+        $this->assertEqualsWithDelta(2504.124769, $complaint->sla_paused_at?->diffInSeconds($resumedAt), 0.000001);
+        Carbon::setTestNow($resumedAt);
+        $this->resume($employee, $complaint);
+
+        $complaint = $complaint->fresh();
+        $this->assertSame($expectedPausedSeconds, $complaint->sla_total_paused_seconds);
+        $this->assertIsInt($complaint->sla_total_paused_seconds);
+        $this->assertSame($originalDueAt->addSeconds($expectedPausedSeconds)->timestamp, $complaint->due_at?->timestamp);
+        $this->assertNull($complaint->sla_paused_at);
+
+        $this->assertSame('in_progress', $complaint->fresh()->status);
+        $this->assertComplaintWorkflowIsConsistent($complaint->fresh());
+    }
+
+    public function test_multiple_microsecond_pause_cycles_use_integer_seconds_without_fractional_drift(): void
+    {
+        $firstPausedAt = Carbon::parse('2026-08-16 10:00:00.100000', 'UTC');
+        $firstResumedAt = Carbon::parse('2026-08-16 10:41:44.224769', 'UTC');
+        $secondPausedAt = Carbon::parse('2026-08-16 11:00:00.900000', 'UTC');
+        $secondResumedAt = Carbon::parse('2026-08-16 11:10:00.100000', 'UTC');
+        Carbon::setTestNow($firstPausedAt);
+        [, , $complaint] = $this->inProgressComplaint(now()->addHours(8));
+        $originalDueAt = $complaint->due_at->copy();
+
+        $complaint->forceFill(['sla_total_paused_seconds' => 11])->save();
+        $complaint = $this->persistMicrosecondPause($complaint, $firstPausedAt);
+        Carbon::setTestNow($firstResumedAt);
+        app(SlaPauseService::class)->resume($complaint, true);
+
+        $complaint = $complaint->fresh();
+        $complaint = $this->persistMicrosecondPause($complaint, $secondPausedAt);
+        Carbon::setTestNow($secondResumedAt);
+        app(SlaPauseService::class)->resume($complaint, true);
+
+        $complaint = $complaint->fresh();
+        $this->assertSame(3114, $complaint->sla_total_paused_seconds);
+        $this->assertIsInt($complaint->sla_total_paused_seconds);
+        $this->assertSame($originalDueAt->addSeconds(3103)->timestamp, $complaint->due_at?->timestamp);
+        $this->assertNull($complaint->sla_paused_at);
+    }
+
+    public function test_microsecond_pause_is_accumulated_without_extending_deadline_when_resolving(): void
+    {
+        $pausedAt = Carbon::parse('2026-08-16 10:00:00.100000', 'UTC');
+        $resumedAt = Carbon::parse('2026-08-16 10:41:44.224769', 'UTC');
+        Carbon::setTestNow($pausedAt);
+        [$employee, $citizen, $complaint] = $this->inProgressComplaint(now()->addHours(8));
+        $originalDueAt = $complaint->due_at->copy();
+        $this->requestInformation($employee, $complaint);
+        $this->respond($citizen, $complaint);
+
+        $complaint = $this->persistMicrosecondPause($complaint, $pausedAt);
+        Carbon::setTestNow($resumedAt);
+        Sanctum::actingAs($employee);
+        $this->patchJson('/api/v1/employee/complaints/'.$complaint->id.'/status', ['status' => 'resolved'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'resolved');
+
+        $complaint = $complaint->fresh();
+        $this->assertSame(2504, $complaint->sla_total_paused_seconds);
+        $this->assertSame($originalDueAt->timestamp, $complaint->due_at?->timestamp);
+        $this->assertNull($complaint->sla_paused_at);
+
+        $this->assertSame('completed', ComplaintInformationRequest::query()->where('complaint_id', $complaint->id)->latest('id')->value('status'));
+    }
+
+    public function test_resume_without_an_active_pause_is_a_no_op(): void
+    {
+        Carbon::setTestNow('2026-08-16 10:00:00');
+        [, , $complaint] = $this->inProgressComplaint(now()->addHour());
+        $originalDueAt = $complaint->due_at->copy();
+        $complaint->forceFill(['sla_total_paused_seconds' => 42])->save();
+
+        Carbon::setTestNow('2026-08-16 11:00:00');
+        app(SlaPauseService::class)->resume($complaint->fresh(), true);
+
+        $complaint = $complaint->fresh();
+        $this->assertSame(42, $complaint->sla_total_paused_seconds);
+        $this->assertSame($originalDueAt->timestamp, $complaint->due_at?->timestamp);
+        $this->assertNull($complaint->sla_paused_at);
     }
 
     public function test_overdue_complaint_cannot_escape_breach_by_requesting_information(): void
@@ -245,5 +343,14 @@ class SlaPauseWorkflowTest extends TestCase
         Sanctum::actingAs($employee);
         $this->patchJson('/api/v1/employee/complaints/'.$complaint->id.'/status', ['status' => 'in_progress'])->assertOk();
         $this->assertSame('completed', ComplaintInformationRequest::query()->where('complaint_id', $complaint->id)->latest('id')->value('status'));
+    }
+
+    private function persistMicrosecondPause(Complaint $complaint, Carbon $pausedAt): Complaint
+    {
+        DB::table('complaints')
+            ->where('id', $complaint->id)
+            ->update(['sla_paused_at' => $pausedAt->format('Y-m-d H:i:s.u')]);
+
+        return $complaint->fresh();
     }
 }

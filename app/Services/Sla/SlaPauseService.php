@@ -29,10 +29,11 @@ class SlaPauseService
             return;
         }
 
-        $pausedSeconds = max(0, $complaint->sla_paused_at->diffInSeconds(now()));
+        $pausedSeconds = max(0, (int) floor($complaint->sla_paused_at->diffInSeconds(now())));
+        $totalPausedSeconds = (int) $complaint->sla_total_paused_seconds + $pausedSeconds;
         $attributes = [
             'sla_paused_at' => null,
-            'sla_total_paused_seconds' => (int) $complaint->sla_total_paused_seconds + $pausedSeconds,
+            'sla_total_paused_seconds' => $totalPausedSeconds,
         ];
 
         if ($extendDeadline && $complaint->due_at && ! $complaint->is_sla_breached) {

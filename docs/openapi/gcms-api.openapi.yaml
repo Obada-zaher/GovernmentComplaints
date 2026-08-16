@@ -230,6 +230,27 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/ValidationError" }
+  /citizen/complaints/{complaint}/information-response:
+    post:
+      tags: [Citizen Complaints]
+      summary: Submit one text response to an active information request
+      description: The complaint owner may submit exactly one non-blank text response while the complaint is waiting_citizen. It remains waiting_citizen; attachments remain available through the existing attachments endpoint before or after this request.
+      parameters:
+        - $ref: "#/components/parameters/ComplaintId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message: { type: string, minLength: 1, maxLength: 2000, example: "The subscription number is 87451239." }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/ValidationError" }
   /citizen/complaints/{complaint}:
     get:
       tags: [Citizen Complaints]

@@ -16,6 +16,7 @@ class ComplaintInformationRequest extends Model
         'complaint_id',
         'requested_by',
         'message',
+        'response_message',
         'status',
         'requested_at',
         'responded_at',

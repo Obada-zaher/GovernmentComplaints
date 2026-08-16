@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api\V1\Citizen;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Citizen\AddComplaintAttachmentRequest;
 use App\Http\Requests\Api\V1\Citizen\CheckDuplicateComplaintRequest;
+use App\Http\Requests\Api\V1\Citizen\CitizenInformationResponseRequest;
 use App\Http\Requests\Api\V1\Citizen\StoreComplaintRequest;
 use App\Http\Resources\Api\V1\ComplaintResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\Complaint;
+use App\Services\Complaints\ComplaintInformationRequestService;
 use App\Services\Complaints\DuplicateComplaintDetectionService;
 use App\Services\ComplaintService;
 use Illuminate\Database\Eloquent\Builder;
@@ -23,6 +25,7 @@ class ComplaintController extends Controller
     public function __construct(
         private readonly ComplaintService $complaintService,
         private readonly DuplicateComplaintDetectionService $duplicateComplaintDetectionService,
+        private readonly ComplaintInformationRequestService $informationRequestService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -82,6 +85,21 @@ class ComplaintController extends Controller
                 'created_at' => $match['complaint']->created_at?->toISOString(),
             ], $matches),
         ]);
+    }
+
+    public function respondToInformationRequest(CitizenInformationResponseRequest $request, Complaint $complaint): JsonResponse
+    {
+        if ((int) $complaint->citizen_id !== (int) $request->user()->id) {
+            return $this->errorResponse('Forbidden.', [], 403);
+        }
+
+        $complaint = $this->informationRequestService->respondWithText(
+            $complaint,
+            $request->user(),
+            $request->validated('message'),
+        );
+
+        return $this->successResponse('Information response submitted successfully.', new ComplaintResource($complaint));
     }
 
     public function show(Request $request, Complaint $complaint): JsonResponse

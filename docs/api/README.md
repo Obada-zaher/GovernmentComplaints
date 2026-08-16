@@ -119,6 +119,41 @@ Use `per_page` where supported. Admin user and employee lists cap `per_page` at 
 
 `POST /api/v1/citizen/complaints/check-duplicates` accepts `latitude`, `longitude`, and an active `category_id`. It is a warning-only, read-only check: it looks for non-deleted complaints in the same category with an active status within the configured 15-meter default radius, returning only a limited public match summary. Coordinates `0,0` return no matches. `POST /api/v1/citizen/complaints` remains unchanged and always creates a valid complaint even when this check finds a match.
 
+## Citizen Information Response
+
+`POST /api/v1/citizen/complaints/{id}/information-response` lets the complaint owner submit exactly one textual answer to the active employee information request.
+
+```json
+{
+  "message": "The subscription number is 87451239."
+}
+```
+
+Success uses the existing complaint response shape and keeps the complaint waiting for employee review:
+
+```json
+{
+  "success": true,
+  "message": "Information response submitted successfully.",
+  "data": { "id": 123, "status": "waiting_citizen", "timeline": [] },
+  "meta": {}
+}
+```
+
+A second text response for the same request returns `422` without overwriting the first:
+
+```json
+{
+  "success": false,
+  "message": "Validation failed.",
+  "errors": {
+    "message": ["This information request has already received a text response."]
+  }
+}
+```
+
+Attachments continue to use `POST /api/v1/citizen/complaints/{id}/attachments` unchanged. Calling text then attachments, or uploading an attachment first and then calling this endpoint, is supported; multiple attachment uploads remain supported. Another citizen receives `403` with the normal forbidden envelope.
+
 ## File Uploads
 
 Complaint attachments use `multipart/form-data` with `attachments[]`.

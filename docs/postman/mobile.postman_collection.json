@@ -539,6 +539,67 @@
                     ]
                 },
                 {
+                    "name": "Submit Information Response",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/citizen/complaints/{{complaint_id}}/information-response",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "citizen",
+                                "complaints",
+                                "{{complaint_id}}",
+                                "information-response"
+                            ]
+                        },
+                        "description": "Purpose: Submit exactly one text response to the current employee information request. The complaint remains waiting_citizen. Attachments remain separate: this request may be run before or after Add Attachment, and multiple attachment uploads remain supported. A second text response returns 422; using another citizen token returns 403.\nRequired role: citizen\nRequired token: {{citizen_token}}\nExpected response: standard GCMS API envelope with the existing complaint shape.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{citizen_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"message\": \"The subscription number is 87451239.\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status code is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('complaint remains waiting for employee review', function () { var json = pm.response.json(); pm.expect(json.success).to.eql(true); pm.expect(json.data.status).to.eql('waiting_citizen'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
                     "name": "Create Complaint With Attachment",
                     "request": {
                         "method": "POST",

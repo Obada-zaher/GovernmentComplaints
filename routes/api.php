@@ -81,6 +81,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('complaints', [CitizenComplaintController::class, 'index']);
             Route::post('complaints', [CitizenComplaintController::class, 'store']);
             Route::post('complaints/check-duplicates', [CitizenComplaintController::class, 'checkDuplicates']);
+            Route::post('complaints/{complaint}/information-response', [CitizenComplaintController::class, 'respondToInformationRequest']);
             Route::get('complaints/{complaint}', [CitizenComplaintController::class, 'show']);
             Route::post('complaints/{complaint}/attachments', [CitizenComplaintController::class, 'addAttachments']);
             Route::post('offline/complaints/sync', [OfflineComplaintSyncController::class, 'sync']);

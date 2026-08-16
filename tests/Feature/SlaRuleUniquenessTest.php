@@ -10,7 +10,9 @@ use App\Models\SlaRule;
 use App\Models\User;
 use App\Services\Sla\SlaDeadlineService;
 use Illuminate\Database\QueryException;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -72,22 +74,104 @@ class SlaRuleUniquenessTest extends TestCase
         $this->assertSame($secondCategory->id, $secondRule->fresh()->category_id);
     }
 
-    public function test_database_constraint_blocks_duplicate_fallback_scopes_when_validation_is_bypassed(): void
+    public function test_database_constraint_blocks_live_duplicate_exact_and_fallback_scopes_when_validation_is_bypassed(): void
     {
-        $priority = Priority::factory()->create();
-        SlaRule::factory()->create([
+        [$department, $category, $priority] = $this->scope();
+
+        foreach ([
+            [$department->id, $category->id],
+            [null, null],
+            [$department->id, null],
+            [null, $category->id],
+        ] as [$departmentId, $categoryId]) {
+            SlaRule::factory()->create([
+                'department_id' => $departmentId,
+                'category_id' => $categoryId,
+                'priority_id' => $priority->id,
+            ]);
+
+            $this->assertLiveScopeDuplicateIsRejected($departmentId, $categoryId, $priority->id);
+        }
+    }
+
+    public function test_soft_deleted_rules_do_not_block_recreating_the_same_scope(): void
+    {
+        [$department, $category, $priority] = $this->scope();
+        $attributes = $this->scopeAttributes($department, $category, $priority);
+
+        $firstRule = SlaRule::factory()->create($attributes);
+        $firstRule->delete();
+
+        $replacement = SlaRule::factory()->create($attributes);
+        $replacement->delete();
+
+        $currentRule = SlaRule::factory()->create($attributes);
+
+        $this->assertSame(3, SlaRule::withTrashed()->where($attributes)->count());
+        $this->assertSame($currentRule->id, SlaRule::query()->where($attributes)->sole()->id);
+    }
+
+    public function test_pending_migration_recovers_from_old_partial_helper_columns(): void
+    {
+        $migration = require database_path('migrations/2026_08_16_000006_add_live_scope_uniqueness_to_sla_rules_table.php');
+        $migration->down();
+
+        Schema::table('sla_rules', function (Blueprint $table): void {
+            $table->unsignedBigInteger('department_scope_key')->virtualAs('COALESCE(department_id, 0)');
+            $table->unsignedBigInteger('category_scope_key')->virtualAs('COALESCE(category_id, 0)');
+        });
+
+        $migration->up();
+
+        $this->assertTrue(Schema::hasColumn('sla_rules', 'department_scope_key'));
+        $this->assertTrue(Schema::hasColumn('sla_rules', 'category_scope_key'));
+        $this->assertTrue(Schema::hasColumn('sla_rules', 'priority_scope_key'));
+        $this->assertFalse(Schema::hasColumn('sla_rules', 'live_scope_key'));
+        $this->assertTrue(Schema::hasIndex('sla_rules', 'sla_rules_unique_live_scope'));
+    }
+
+    public function test_resolver_keeps_exact_then_department_category_and_global_fallback_precedence(): void
+    {
+        [$department, $category, $priority] = $this->scope();
+        $secondDepartment = Department::factory()->create();
+        $secondCategory = ComplaintCategory::factory()->create(['department_id' => $secondDepartment->id]);
+        $global = SlaRule::factory()->create([
             'department_id' => null,
             'category_id' => null,
             'priority_id' => $priority->id,
         ]);
-
-        $this->expectException(QueryException::class);
-
-        SlaRule::factory()->create([
+        $categoryFallback = SlaRule::factory()->create([
             'department_id' => null,
+            'category_id' => $category->id,
+            'priority_id' => $priority->id,
+        ]);
+        $departmentFallback = SlaRule::factory()->create([
+            'department_id' => $department->id,
             'category_id' => null,
             'priority_id' => $priority->id,
         ]);
+        $exact = SlaRule::factory()->create($this->scopeAttributes($department, $category, $priority));
+        $resolver = app(SlaDeadlineService::class);
+
+        $this->assertSame($exact->id, $resolver->findRule($department->id, $category->id, $priority->id)?->id);
+        $this->assertSame($departmentFallback->id, $resolver->findRule($department->id, $secondCategory->id, $priority->id)?->id);
+        $this->assertSame($categoryFallback->id, $resolver->findRule($secondDepartment->id, $category->id, $priority->id)?->id);
+        $this->assertSame($global->id, $resolver->findRule($secondDepartment->id, $secondCategory->id, $priority->id)?->id);
+    }
+
+    private function assertLiveScopeDuplicateIsRejected(?int $departmentId, ?int $categoryId, int $priorityId): void
+    {
+        try {
+            SlaRule::factory()->create([
+                'department_id' => $departmentId,
+                'category_id' => $categoryId,
+                'priority_id' => $priorityId,
+            ]);
+
+            $this->fail('The database allowed a duplicate live SLA scope.');
+        } catch (QueryException) {
+            $this->addToAssertionCount(1);
+        }
     }
 
     public function test_resolver_deadline_and_submission_timeline_remain_deterministic(): void
